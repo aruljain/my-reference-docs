@@ -1,0 +1,313 @@
+<form>
+  <label>923_Navisys_Payout_Cycle_LogAnalysis</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="time" token="field2">
+      <label>Time</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="radio" token="field3">
+      <label>Environment</label>
+      <choice value="pwsaasnav*">Production</choice>
+      <choice value="dwsaasnav*">Development</choice>
+      <choice value="awsaasnav*">Stage</choice>
+      <choice value="twsaasnav*">QA</choice>
+    </input>
+    <input type="dropdown" token="field4">
+      <label>Hosts</label>
+      <choice value="*">ALL</choice>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log*" OR  source="*E:\\Multicycle\\CycleBoss\\Log_Processor*" OR  source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"   host=$field3$
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*)| table host | dedup host</query>
+      </search>
+      <earliest>$field2.earliest$</earliest>
+      <latest>$field2.latest$</latest>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  
+  <row>
+    <panel>
+      <title>Navisys Payout - Processing Counts</title>
+      <table>
+        <search>
+          <query>index=life_retirement sourcetype=* source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$
+| fields cycledate polnum trans_number
+| stats distinct_count(polnum) as "Total Policies", distinct_count(trans_number) as "Total Transactions" by cycledate</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - Error Type</title>
+      <chart>
+        <search>
+          <query>index=life_retirement sourcetype=navisys:batch source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$ "Error ==&gt;" 
+
+| fields err_code err_message code msg 
+| top 10 err_message</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - Error Timechart</title>
+      <table>
+        <search>
+          <query>index=life_retirement sourcetype=navisys:batch source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$" Error ==&gt;" 
+| fields err_code err_message code 
+| sort - err_message
+| timechart count by err_message</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - Transaction types</title>
+      <chart>
+        <search>
+          <query>index=life_retirement sourcetype=navisys:batch source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$ "Txn #" 
+| stats count by trans_type 
+| sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Navisys Payout - Transaction Status</title>
+      <chart>
+        <search>
+          <query>index=life_retirement sourcetype=navisys:batch source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$ "Txn #" 
+| stats count by trans_status | sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Payout Transaction Types  List</title>
+      <table>
+        <search>
+          <query>index=life_retirement sourcetype=navisys:batch source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$ "Txn #" 
+| stats count by trans_type 
+| sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Payout - ORA_Err_Message_By_Class</title>
+      <table>
+        <search>
+          <query>index="life_retirement" (source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*")  sourcetype="navisys:batch" tag="*error*" *ORA-* |stats count by err_message Class</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Payout - Exception_Error_Status_Class</title>
+      <table>
+        <search>
+          <query>index="life_retirement" (source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*")  sourcetype="navisys:batch"  tag="*error*" *Exception* | stats count by trans_status Class</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - Total Error Count</title>
+      <chart>
+        <search>
+          <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) 
+| search host=$field4$ tag="*error*" 
+| search "SQLException*" 
+| stats count as SQl_Error  
+| appendcols [ search index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$
+| search host=$field4$   tag="*error*" "ORA-*"
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) tag="*error*" "ORA-*" 
+| stats count as ORA_Error ] 
+| appendcols [search index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"  host=$field3$
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) 
+| search host=$field4$  tag="*error*" | search "Transaction rolled*"
+| stats count as Transaction_RolledBack_Error]
+| appendcols [search index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"  host=$field3$
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) 
+| search host=$field4$  tag="*error*" | search "*NullPointerException*"
+| stats count as Transaction_RolledBack_Error]
+| transpose | rename column as "Error_Type" , "row 1" as "Error_Count"</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=index="life_retirement"  source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=$field3$
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) | search host=$field4$  tag="*error*" Log_Level="ERROR"  trans_status="Transaction rolled*"&amp;earliest=$field2.earliest$&amp;latest=$field2.latest$</link>
+        </drilldown>
+      </chart>
+    </panel>
+    <panel>
+      <title>Navisys Payout - Ora Error</title>
+      <table>
+        <search>
+          <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*" host=pwsaasnav*
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) | search host=PWSAASNAVCY02   tag="*error*" "ORA-*" | stats count by  host source sourcetype Class |  addcoltotals  | sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Navisys Payout - Transaction rolled</title>
+      <table>
+        <search>
+          <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"  host=pwsaasnav*
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) | search host=PWSAASNAVCY02  tag="*error*" | search "Transaction rolled*"| stats count by host source sourcetype  | addcoltotals  | sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - SQL Exception</title>
+      <table>
+        <search>
+          <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"  host=pwsaasnav*
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) | search host=PWSAASNAVCY02  tag="*error*" | search "SQLException*" | stats count by  host source sourcetype | addcoltotals  | sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <title>Navisys Payout -  NullPointerException Error</title>
+      <table>
+        <search>
+          <query>index="life_retirement" source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"  host=pwsaasnav*
+| search (host=pw* OR host=aw* OR host=dw* OR host=tw*) | search host=PWSAASNAVCY02  tag="*error*" | search "*NullPointerException*" | stats count by  host source sourcetype | addcoltotals  | sort - count</query>
+          <earliest>$field2.earliest$</earliest>
+          <latest>$field2.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="count">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Navisys Payout - Alert Summary</title>
+      <single>
+        <search>
+          <query>index="life_retirement" OR index="web_technology" sourcetype=* 
+(host=pwsaasintcy01* OR host=pwsaasintcy02* OR
+host=pwsaasnavcy01* OR host=pwsaasnavcy02*) source="*E:\\Multicycle\\CycleBoss\\Log_Payout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_RevPayout*" OR source="*E:\\Multicycle\\CycleBoss\\Log_PayoutReserves*"
+| search NullPointerException | stats earliest(_time) as Earlier latest(_time) as New count as TotalCount by host 
+| eval EarliestEvent=strftime(Earlier,"%m/%d/%y %H:%M:%S") | eval LatestEvent=strftime(New,"%m/%d/%y %H:%M:%S") |  fields EarliestEvent LatestEvent host TotalCount | stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Alert_Triggered_For_Last 24h</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <link target="_blank">https://adhoc-shc.aig.net:8000/en-US/alerts/splunk_app_siem?eai%3Aacl.app=splunk_app_life-retirement-users&amp;eai%3Aacl.owner=*&amp;severity=*&amp;offset=0</link>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+</form>

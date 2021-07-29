@@ -1,0 +1,4 @@
+#sonar.sourceEncoding=ISO-8859-1
+
+sonar plugin:
+https://github.com/sonar-perl/sonar-perl/releases

@@ -1,0 +1,119 @@
+<form theme="light">
+  <label>923_Navisys_MAWA_PIP_Comparisions</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="dropdown" token="field6">
+      <label>Choose DB Connection</label>
+      <choice value="navisys_923_dev">Development</choice>
+      <choice value="navisys_923_qa">Test</choice>
+      <choice value="navisys_923_stg">Stage</choice>
+      <choice value="">ALL</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <default>navisys_923_stg</default>
+      <initialValue>navisys_923_stg</initialValue>
+    </input>
+    <input type="text" token="field7">
+      <label>Cycle Date</label>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>DTR Living Benefit Rates</title>
+      <table>
+        <search>
+          <query>| dbxquery connection=$field6$ maxrows=0 shortnames=1 query="select ci_cont,
+       ci_cycle_date,
+       ci_gmwb_mawa,
+       ci_mawa_percent,
+       ci_pip_value,
+       ci_pip_percent
+  from t_lxci_sun_contract_info
+ where ci_cont IN (select s.pc_cont
+                     from t_antl_transaction_log,
+                          (select pc_cont,
+                                  tc_pol_num,
+                                  max(tl_txn_num) as txn_num,
+                                  tc_prcs_date
+                             from t_antl_transaction_log,
+                                  t_litc_transaction_common,
+                                  t_anpo_policy po,
+                                  t_lipc_policy_common,
+                                  t_litt_transaction_type_code
+                            where tl_txn_num = tc_txn_num
+                              and tc_prcs_date = '$field7$' 
+                              and tc_txn_status = 'D'
+                              and (po.po_gmwb_eff_date &gt; '01jan1900')
+                              and po.po_pol_num = tc_pol_num
+                              and pc_pol_num = tc_pol_num
+                              and tt_txn_type = tc_txn_type
+                              and pc_status in ('A', '1')
+                            group by tc_pol_num, pc_cont, tc_prcs_date) s,
+                          t_litt_transaction_type_code,
+                          t_litc_transaction_common
+                    where s.txn_num = tl_txn_num
+                      and tt_txn_type = tc_txn_type
+                      and tc_txn_num = tl_txn_num
+                      and tt_txn_type in ('1',
+                                          '4',
+                                          '6',
+                                          '7',
+                                          '11',
+                                          '18',
+                                          '25',
+                                          '44',
+                                          '63',
+                                          '133',
+                                          '1001',
+                                          '167',
+                                          '168',
+                                          '170'))
+   and ci_cycle_date = '$field7$' 
+ order by ci_cont
+" | fields - _raw
+</query>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">cell</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Living Benefit Rates - Transaction Level</title>
+      <table>
+        <search>
+          <query>| dbxquery connection=$field6$ maxrows=0 shortnames=1 query="select s.pc_cont,s.tc_prcs_date,tt_txn_type_desc,Tl_Gmwb_Mawa,tl_gmwb_mav_mawp,tl_gmwb_pip_percent,tl_gmwb_pip_value
+from t_antl_transaction_log ,
+(select pc_cont,tc_pol_num,max(tl_txn_num) as txn_num,tc_prcs_date
+from t_antl_transaction_log,t_litc_transaction_common,t_anpo_policy po,t_lipc_policy_common,t_litt_transaction_type_code
+where tl_txn_num = tc_txn_num and tc_prcs_date in ('$field7$') --and pc_issue_date = '10oct2018'
+and tc_txn_status = 'D' and (po.po_gmwb_eff_date &gt; '01jan1900')
+and po.po_pol_num = tc_pol_num and pc_pol_num = tc_pol_num
+and tt_txn_type = tc_txn_type and pc_status in ('A','1') group by tc_pol_num,pc_cont,tc_prcs_date) s,
+t_litt_transaction_type_code,t_litc_transaction_common
+where s.txn_num = tl_txn_num and tt_txn_type = tc_txn_type and tc_txn_num = tl_txn_num
+and tt_txn_type in ('1','4','6','7','11','18','25','44','63','133','1001','167','168','170')
+order by s.tc_prcs_date, s.pc_cont
+" | fields - _raw
+</query>
+          <latest>now</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">highlow</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">true</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">false</option>
+        <format type="color" field="Processing_Status">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="number" field="Number Of Policies">
+          <option name="precision">0</option>
+          <option name="unitPosition">before</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

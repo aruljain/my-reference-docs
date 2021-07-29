@@ -1,0 +1,5 @@
+Git checkout by date for a branch
+
+git checkout `git rev-list -n 1 --first-parent --before="2019-07-27 13:37" master`
+
+#above mentioned is tild symbol not single quote.

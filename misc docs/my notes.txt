@@ -1,0 +1,23 @@
+sonar plugin:
+https://github.com/sonar-perl/sonar-perl/releases
+
+
+1. Quality Process Implementation
+	a) W3H
+	b) SonarQub e/ SonarScanner
+	c) Java Memory Model & Code Profiling using Java Visual VM
+	d) DSM - Lattix
+	e) Federated Authentication - Single Sign on using CAS
+	f) CAP Theorem & NoSQL
+	g) Performance & Load Testing Tools - JMeter / nGrinder
+	h) Web Automation Testing - Selenium / Katalon Studio
+
+2. Dev Ops Implementation - Jenkin / Github / Artifactory(jFrog) / SonarQube integration
+
+3. Lattix POC
+4. Functional KT from Vijay
+5. Technical KT from Dev Team 
+6. Release Pattern from Ragav (Done already)
+7. Schedule a discussion with Narayanan by 20th Feb
+
+	

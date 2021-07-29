@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	id="WebApp" version="2.5">
+	<display-name>FOWebApp</display-name>
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
+	</listener>
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>
+			<![CDATA[/WEB-INF/navisysContext.xml]]>
+		</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>contextInitializerClasses</param-name>
+		<param-value>com.navisys.besystem.engine.startup.BAPIApplicationInitializer</param-value>
+	</context-param>
+
+	<filter>
+		<filter-name>springSecurityFilterChain</filter-name>
+		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>springSecurityFilterChain</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<filter>
+		<filter-name>access-log</filter-name>
+		<filter-class>com.navisys.ServletFilter</filter-class>
+		<init-param>
+			<param-name>access.log.path</param-name>
+			<param-value>/app/WebApps/VDEV/logs/HTTPAccess.log</param-value>
+		</init-param>
+	</filter>
+	<filter-mapping>
+		<filter-name>access-log</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	<filter-mapping>
+  <filter-name>access-log</filter-name>
+  <url-pattern>*.js</url-pattern>
+</filter-mapping>
+<filter-mapping>
+  <filter-name>access-log</filter-name>
+  <url-pattern>*.css</url-pattern>
+</filter-mapping>
+<filter-mapping>
+  <filter-name>access-log</filter-name>
+  <url-pattern>*.html</url-pattern>
+</filter-mapping>
+<filter-mapping>
+  <filter-name>access-log</filter-name>
+  <url-pattern>*.jsp</url-pattern>
+</filter-mapping>
+<filter-mapping>
+  <filter-name>access-log</filter-name>
+  <url-pattern>/</url-pattern>
+</filter-mapping>
+
+	
+
+
+
+	<!-- <filter> <filter-name>trimFilter</filter-name> <filter-class>com.cj.trim.trimFilter</filter-class> 
+		<init-param> <param-name>removeComments</param-name> <param-value>true</param-value> 
+		</init-param> </filter> <filter-mapping> <filter-name>trimFilter</filter-name> 
+		<url-pattern>*.jsp</url-pattern> </filter-mapping> -->
+
+	<!-- <filter> <filter-name>GzipFilter</filter-name> <filter-class>com.cj.gzipflt.GzipFilter</filter-class> 
+		<init-param> <param-name>mimeInclude</param-name> <param-value>text/plain,text/html,text/xml</param-value> 
+		</init-param> </filter> <filter-mapping> <filter-name>GzipFilter</filter-name> 
+		<url-pattern>*.jsp</url-pattern> </filter-mapping> -->
+
+	<!-- <filter> <filter-name>csstrimFilter</filter-name> <filter-class>com.cj.trim.csstrimFilter</filter-class> 
+		</filter> <filter-mapping> <filter-name>csstrimFilter</filter-name> <url-pattern>*.css</url-pattern> 
+		</filter-mapping> <filter> <filter-name>jstrimFilter</filter-name> <filter-class>com.cj.trim.jstrimFilter</filter-class> 
+		</filter> <filter-mapping> <filter-name>jstrimFilter</filter-name> <url-pattern>*.js</url-pattern> 
+		</filter-mapping> -->
+
+	<listener id="Listener_1146699737904">
+		<listener-class>com.sunamerica.workflow.fo.WorkflowSessionHandler</listener-class>
+	</listener>
+	<listener id="Listener_1146699737905">
+		<listener-class>com.sunamerica.workflow.jal.WorkflowContextHandler</listener-class>
+	</listener>
+	<servlet id="Servlet_1">
+		<servlet-name>StartUp</servlet-name>
+		<description>StartUp</description>
+		<servlet-class>com.sunamerica.workflow.web.StartUpServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet id="Servlet_2">
+		<servlet-name>AuthorizationServlet</servlet-name>
+		<description>AuthorizationServlet</description>
+		<servlet-class>com.sunamerica.workflow.web.AuthorizationServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_3">
+		<servlet-name>ControllerServlet</servlet-name>
+		<description>ControllerServlet</description>
+		<servlet-class>com.sunamerica.workflow.web.ControllerServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_4">
+		<servlet-name>QueryControllerServlet</servlet-name>
+		<description>QueryControllerServlet</description>
+		<servlet-class>com.sunamerica.workflow.web.QueryControllerServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_5">
+		<servlet-name>SunviewServiceServlet</servlet-name>
+		<description>SunviewServiceServlet</description>
+		<servlet-class>com.sunamerica.workflow.service.SunviewServiceServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_6">
+		<servlet-name>WorkflowRoutingServlet</servlet-name>
+		<description>WorkflowRoutingServlet</description>
+		<servlet-class>com.sunamerica.workflow.fo.WorkflowRoutingServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_7">
+		<servlet-name>WorkflowServiceServlet</servlet-name>
+		<description>WorkflowServiceServlet</description>
+		<servlet-class>com.sunamerica.workflow.jal.WorkflowServiceServlet</servlet-class>
+	</servlet>
+	<servlet id="Servlet_8">
+		<servlet-name>AddProductServlet</servlet-name>
+		<description>AddProductServlet</description>
+		<servlet-class>com.navisys.agt.AddProductServlet</servlet-class>
+	</servlet>
+	<!-- SCR 50516 Start -->
+	<servlet id="Servlet_9">
+		<servlet-name>LogoutServlet</servlet-name>
+		<description>LogoutServlet</description>
+		<servlet-class>com.navisys.fo.LogoutServlet</servlet-class>
+	</servlet>
+	<!-- SCR 50516 End -->
+	<servlet-mapping id="ServletMapping_1">
+		<servlet-name>StartUp</servlet-name>
+		<url-pattern>/StartUp</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_2">
+		<servlet-name>AuthorizationServlet</servlet-name>
+		<url-pattern>/Authorization/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_2.1">
+		<servlet-name>AuthorizationServlet</servlet-name>
+		<url-pattern>/Workflow/Authorization/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_3">
+		<servlet-name>ControllerServlet</servlet-name>
+		<url-pattern>/Workflows/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_3.1">
+		<servlet-name>ControllerServlet</servlet-name>
+		<url-pattern>/Workflow/Workflows/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_4">
+		<servlet-name>QueryControllerServlet</servlet-name>
+		<url-pattern>/QueryControllerServlet/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_5">
+		<servlet-name>SunviewServiceServlet</servlet-name>
+		<url-pattern>/sunviewservices/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_6">
+		<servlet-name>WorkflowRoutingServlet</servlet-name>
+		<url-pattern>/Workflow/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_7">
+		<servlet-name>WorkflowServiceServlet</servlet-name>
+		<url-pattern>/WorkflowServices/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping id="ServletMapping_8">
+		<servlet-name>AddProductServlet</servlet-name>
+		<url-pattern>/AddProductServlet</url-pattern>
+	</servlet-mapping>
+	<servlet id="NAICServlet">
+		<servlet-name>NAICServlet</servlet-name>
+		<description>NAICServlet</description>
+		<servlet-class>com.navisys.agt.NAICServlet</servlet-class>
+	</servlet>
+	<servlet-mapping id="NAICServletMapping">
+		<servlet-name>NAICServlet</servlet-name>
+		<url-pattern>/NAICServlet</url-pattern>
+	</servlet-mapping>
+
+	<servlet id="FundModificationServlet">
+		<servlet-name>FundModificationServlet</servlet-name>
+		<description>FundModificationServlet</description>
+		<servlet-class>com.navisys.fo.funds.FundModificationServlet</servlet-class>
+	</servlet>
+	<servlet-mapping id="FundModificationServletMapping">
+		<servlet-name>FundModificationServlet</servlet-name>
+		<url-pattern>/FundModificationServlet</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>Jersey REST Service</servlet-name>
+		<servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
+		<init-param>
+			<param-name>com.sun.jersey.config.property.packages</param-name>
+			<param-value>com.sunamerica.amp.rest</param-value>
+		</init-param>
+		<init-param>
+			<param-name>com.sun.jersey.config.feature.DisableXmlSecurity</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Jersey REST Service</servlet-name>
+		<url-pattern>/AMPNavisys/*</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>Internet-Rest-Service</servlet-name>
+		<servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
+		<init-param>
+			<param-name>com.sun.jersey.config.property.packages</param-name>
+			<param-value>com.navisys.rest;com.navisys.rest.blocktrade;com.oasys.rest</param-value>
+		</init-param>
+		<init-param>
+			<param-name>com.sun.jersey.config.feature.DisableXmlSecurity</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Internet-Rest-Service</servlet-name>
+		<url-pattern>/webresources/*</url-pattern>
+	</servlet-mapping>
+
+	<!-- SCR62356 Start -->
+
+	<servlet id="PDFGenServlet">
+		<servlet-name>PDFGenServlet</servlet-name>
+		<servlet-class>com.navisys.fo.servlet.PDFGenServlet</servlet-class>
+	</servlet>
+	<servlet-mapping id="PDFGenServletMapping">
+		<servlet-name>PDFGenServlet</servlet-name>
+		<url-pattern>/PDFGenServlet</url-pattern>
+	</servlet-mapping>
+	<!-- SCR62356 End -->
+
+	<!-- SCR 50516 Start -->
+	<servlet-mapping id="ServletMapping_9">
+		<servlet-name>LogoutServlet</servlet-name>
+		<url-pattern>/en/Logout/*</url-pattern>
+	</servlet-mapping>
+	<!-- SCR 50516 End -->
+
+	<servlet id="NavisysFOServlet">
+		<servlet-name>NavisysFOServlet</servlet-name>
+		<servlet-class>com.navisys.fo.servlet.NavisysFOServlet</servlet-class>
+	</servlet>
+	<servlet-mapping id="NavisysFOServletMapping">
+		<servlet-name>NavisysFOServlet</servlet-name>
+		<url-pattern>/NavisysFOServlet</url-pattern>
+	</servlet-mapping>
+
+	<welcome-file-list id="WelcomeFileList_1">
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+	<!-- Changes related to App scan -->
+	<filter>
+		<display-name>SecurityFilter</display-name>
+		<filter-name>SecurityFilter</filter-name>
+		<filter-class>com.navisys.fo.securityfilter.SecurityFIlter</filter-class>
+		<init-param>
+			<param-name>EXECLUDE_HEADER_LIST</param-name>
+			<param-value>if-none-match,$WSIS,$WSSC,$WSEP,$WSPR</param-value>
+		</init-param>
+		<init-param>
+			<param-name>SKIP_HEADER_VALIDATION</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<init-param>
+			<param-name>SKIP_PARAMETER_VALIDATION</param-name>
+			<param-value>false</param-value>
+		</init-param>
+		<init-param>
+			<param-name>EXECLUDE_URI</param-name>
+			<param-value>/en/Webservice.jsp,/WorkflowServices/.*</param-value>
+		</init-param>
+		<init-param>
+			<param-name>TRUSTED_SOURCE</param-name>
+			<param-value>http://connect/SCHome/index.asp,http://connecttest/SCHome/index.asp</param-value>
+		</init-param>
+		<init-param>
+			<param-name>EXECLUDE_URI_AND_PARAM</param-name>
+			<param-value>
+				[{ "URI":"/en/Webservice.jsp",
+					"Params":""
+				 },{ "URI":"/WorkflowServices/.*",
+					"Params":""
+				 },{ "URI":"/en/Login.jsp",
+					"Params":"password"
+				 },{ "URI":"/en/invest/GenericRuleFundAdd.jsp",
+					"Params":"fundNam_.*,fundName_.*"
+				 },{ "URI":"/en/rates/Living.*",
+					"Params":""
+				 }]
+			</param-value>
+		</init-param>
+	</filter>
+	<filter-mapping>
+		<filter-name>SecurityFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<error-page>
+		<error-code>403</error-code>
+		<location>/403Error.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>401</error-code>
+		<location>/403Error.jsp</location>
+	</error-page>
+	<error-page>
+		<error-code>404</error-code>
+		<location>/404Error.jsp</location>
+	</error-page>
+
+	<resource-ref id="ResourceRef_1">
+		<description>Resource ref for VDEV Model pool</description>
+		<res-ref-name>jdbc/vdev-model-pool</res-ref-name>
+		<res-type>javax.sql.DataSource</res-type>
+		<res-auth>Container</res-auth>
+		<res-sharing-scope>Shareable</res-sharing-scope>
+	</resource-ref>
+	<resource-ref id="ResourceRef_2">
+		<description>Resource ref for VDEV HO pool</description>
+		<res-ref-name>jdbc/vdev-ho-pool</res-ref-name>
+		<res-type>javax.sql.DataSource</res-type>
+		<res-auth>Container</res-auth>
+		<res-sharing-scope>Shareable</res-sharing-scope>
+	</resource-ref>
+
+	<!-- SCR 063238 Start -->
+	<resource-ref id="ResourceRef_3">
+		<description>Resource ref for OASys pool</description>
+		<res-ref-name>jdbc/vdev-oasys-pool</res-ref-name>
+		<res-type>javax.sql.DataSource</res-type>
+		<res-auth>Container</res-auth>
+		<res-sharing-scope>Shareable</res-sharing-scope>
+	</resource-ref>
+	<!-- SCR 063238 End -->
+
+	<env-entry id="EnvEntry_1187751226752">
+		<description>Front Office Configuration File</description>
+		<env-entry-name>fo.config.file</env-entry-name>
+		<env-entry-type>java.lang.String</env-entry-type>
+		<env-entry-value>general.properties</env-entry-value>
+	</env-entry>
+	<env-entry>
+		<env-entry-name>ENVIRONMENT</env-entry-name>
+		<env-entry-type>java.lang.String</env-entry-type>
+		<env-entry-value>VDEV</env-entry-value>
+	</env-entry>
+</web-app>
