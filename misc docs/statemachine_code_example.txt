@@ -1,0 +1,135 @@
+
+{
+  "Comment": "State MAchine to trigger Consumer Lambda periodicaly till success state",
+  "StartAt": "wait_five_seconds",
+  "States": {
+    "wait_five_seconds": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "invoke_consumer_lambda"
+    },
+    "invoke_consumer_lambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:560551404215:function:fifo_consumer_latest",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "wait_five_seconds"
+        }
+      ],
+      "Next": "esm_enabler_lambda"
+    },
+    "esm_enabler_lambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:560551404215:function:esm_enabler",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
+        }
+      ],
+      "Next": "Result"
+    },
+    "Result": {
+      "Type": "Pass",
+      "End": true
+    }    
+  },
+  
+  "TimeoutSeconds": 60
+}
+
+=============================================================================
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "wait_five_seconds",
+  "States": {
+    "wait_five_seconds": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "invoke_consumer_lambda"
+    },
+    "invoke_consumer_lambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:560551404215:function:fifo_consumer_latest",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "wait_five_seconds"
+        }
+      ],
+      "Next": "esm_enabler_lambda"
+    },
+    "esm_enabler_lambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:560551404215:function:esm_enabler",
+      "End": true
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===========================================================================================
+
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "trigger_consumer",
+  "States": {
+    "trigger_consumer": {
+      "Type": "Pass",  
+		"Result":"First State",
+      "Next": "consumer"
+    },
+    "consumer": {
+      "Type": "Pass",
+      "Result": "Second State",
+      "End": true
+    }
+  }
+}
+
+
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "trigger_consumer",
+  "States": {
+    "trigger_consumer": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:560551404215:function:fifo_consumer_latest",
+      "End":true
+    }
+  }

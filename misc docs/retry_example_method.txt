@@ -1,0 +1,18 @@
+public void retry()
+	{
+		int maxTries=3;
+		for (int retryAttempt = 1;; retryAttempt++) {
+			try {
+		System.out.println("Actual Code to be executed");
+		break;
+			}catch(ArithmeticException ae) {
+				if(retryAttempt<=maxTries) {					
+					System.out.println("Retry Attempt :"+retryAttempt);
+					continue;
+				}
+				else
+					throw ae;
+				
+			}
+		}
+	}
