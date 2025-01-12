@@ -1,0 +1,32 @@
+zkeeper start command
+========================
+
+zookeeper-server-start.bat C:\soft\kafka_2.13-3.7.1\config\zookeeper.properties
+
+Kafka server start command
+===========================
+kafka-server-start.bat C:\soft\kafka_2.13-3.7.1\config\server.properties
+
+kafka producer CLI start
+===========================
+kafka-console-producer.bat --broker-list localhost:9092 --topic arultest
+
+
+kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic arultest
+
+
+
+kafka-console-producer.bat --broker-list b-1.nnadbsdevappmskmsk.tb1e04.c19.kafka.us-east-1.amazonaws.com:9098 --topic nna-dbs-dev-appsvc-ro-strm-topic
+
+
+
+
+
+kafka-console-consumer.bat --bootstrap-server b-1.nnadbsdevappmskmsk.tb1e04.c19.kafka.us-east-1.amazonaws.com:9098 --topic nna-dbs-dev-appsvc-ro-strm-topic
+
+
+kafka-console-consumer.bat --bootstrap-server  b-4.nnadbsdevappmskmsk.tb1e04.c19.kafka.us-east-1.amazonaws.com:9092 --topic nna-dbs-dev-appsvc-ro-strm-topic
+
+
+
+
