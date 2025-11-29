@@ -1,0 +1,94 @@
+That's a great idea! Using Quarkus's Micrometer extension with the @Timed annotation allows for highly granular, per-method timing, which is perfect for isolating the impact of async logging.
+Here is the guide on setting up and using Micrometer to time your endpoints:
+1. Add the Micrometer Extension ➕
+You need to include a Micrometer registry extension in your project. The most common choice for local monitoring is the Prometheus registry, which provides a convenient HTTP endpoint to view metrics.
+Run one of the following commands in your project's root directory:
+ * Maven:
+   ./mvnw quarkus:add-extension -Dextensions="micrometer-registry-prometheus"
+
+ * Gradle:
+   ./gradlew addExtension --extensions="micrometer-registry-prometheus"
+
+This adds the necessary dependency to your pom.xml or build.gradle.
+2. Instrument Your Code with @Timed ⏱️
+The @Timed annotation, provided by Micrometer, automatically wraps the annotated method, recording its execution duration, count, and statistical distribution.
+A. Example Resource
+Modify the Java class containing the endpoint you want to test (e.g., your REST Resource):
+import io.micrometer.core.annotation.Timed;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+
+@Path("/my-service")
+public class PerformanceResource {
+
+    // 1. Annotate the method you want to time
+    // This creates a timer named "endpoint.latency.timer"
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @Timed(value = "endpoint.latency.timer", description = "Time taken for the main business logic")
+    public String heavyOperation() {
+        // --- START: Business Logic (where logging occurs) ---
+        // Simulate logging operations (with or without async logging enabled)
+        // Simulate business logic (e.g., database call, complex calculation)
+        try {
+            Thread.sleep(50); // Simulate 50ms of work
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        // --- END: Business Logic ---
+
+        return "Operation Complete";
+    }
+}
+
+B. Custom Timers (Advanced)
+For measuring only a specific block of code within a method, you can manually inject and use the MeterRegistry:
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import jakarta.inject.Inject;
+// ... rest of imports
+
+public class PerformanceResource {
+
+    @Inject
+    MeterRegistry registry;
+
+    // ... inside a method ...
+    
+    // Start the timer
+    Timer.Sample sample = Timer.start(registry);
+    
+    try {
+        // ... Code block to measure (e.g., the logging-heavy section) ...
+    } finally {
+        // Stop the timer and assign it a name
+        sample.stop(registry.timer("internal.logging.time"));
+    }
+}
+
+3. Configure and View Metrics Locally 📊
+A. Run Quarkus
+Run your application in development mode:
+./mvnw quarkus:dev
+
+B. Access the Metrics Endpoint
+While your application is running, the metrics are exposed at the /q/metrics endpoint.
+ * Hit your measured endpoint several times with your load testing tool (e.g., wrk or hey) to generate timing data.
+   wrk -t2 -c10 -d5s http://localhost:8080/my-service
+
+ * Open a browser or use curl to view the Prometheus-formatted metrics:
+   curl http://localhost:8080/q/metrics
+
+C. Analyze the Results
+Look for the metrics corresponding to the name you provided in @Timed, specifically the sum and count.
+You will find multiple lines for your timer, such as:
+ * endpoint_latency_timer_seconds_count (The total number of calls)
+ * endpoint_latency_timer_seconds_sum (The total aggregated duration of all calls in seconds)
+| Metric | Calculation | Interpretation |
+|---|---|---|
+| Average Latency | _sum / _count | The average execution time of your annotated method. |
+| Throughput | _count / Total Test Duration (in seconds) | The effective requests per second processed by the method. |
+Repeat this process with synchronous logging and then with asynchronous logging enabled. If async logging is working, the endpoint_latency_timer_seconds_sum (and thus the average latency) should be lower when asynchronous logging is enabled under high load.
+Would you like me to clarify anything, such as how to set up the load test tool mentioned (wrk)?
