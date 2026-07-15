@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avro on the Wire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d0f;
+    --panel:#10151780;
+    --line:#1f2a2c;
+    --trace:#6ee7a8;
+    --trace-dim:#2c5a44;
+    --amber:#f0a94e;
+    --blue:#6ea8e7;
+    --text:#dbe4e2;
+    --dim:#6b7a78;
+    --red:#e8735c;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'JetBrains Mono', monospace;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  body{
+    padding:20px 14px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    max-width:720px;
+    margin:0 auto;
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:.18em;
+    color:var(--trace);
+    text-transform:uppercase;
+    font-weight:600;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:22px;
+    font-weight:600;
+    color:#fff;
+    letter-spacing:-0.01em;
+    margin-top:2px;
+  }
+  .sub{
+    font-size:12.5px;
+    color:var(--dim);
+    line-height:1.5;
+    margin-top:6px;
+  }
+  .panel{
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#0d1113;
+    padding:14px;
+  }
+  .panel-title{
+    font-size:10.5px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--dim);
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+  }
+  .json-line{
+    font-size:13px;
+    line-height:1.9;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .jkey{color:var(--dim);}
+  .jval{color:var(--text); transition:color .2s, text-shadow .2s;}
+  .jval.active{color:var(--amber); text-shadow:0 0 10px rgba(240,169,78,.5); font-weight:600;}
+
+  .fields{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;}
+  .fchip{
+    border:1px solid var(--line);
+    padding:6px 10px;
+    border-radius:20px;
+    font-size:11px;
+    color:var(--dim);
+    cursor:pointer;
+    transition:all .15s;
+    background:none;
+    font-family:inherit;
+  }
+  .fchip.active{
+    border-color:var(--trace);
+    color:var(--trace);
+    background:rgba(110,231,168,.08);
+  }
+  .fchip:hover{color:var(--text);}
+
+  .bytebox{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-top:12px;
+  }
+  .byte{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 8px;
+    font-size:11px;
+    text-align:center;
+    min-width:44px;
+    color:var(--dim);
+    transition:all .15s;
+  }
+  .byte .hex{font-size:12px; color:var(--text); font-weight:600;}
+  .byte .bits{font-size:9px; letter-spacing:.03em; margin-top:2px;}
+  .byte.active{
+    border-color:var(--amber);
+    background:rgba(240,169,78,.07);
+  }
+  .byte.active .hex{color:var(--amber);}
+  .byte.done{opacity:.4;}
+
+  .scope-wrap{
+    position:relative;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:radial-gradient(ellipse at 50% 0%, #0e1416, #060909 80%);
+    padding:12px 4px 0;
+    overflow:hidden;
+  }
+  canvas{
+    display:block;
+    width:100%;
+    height:150px;
+  }
+  .scope-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size:9.5px;
+    color:var(--dim);
+    padding:2px 12px 10px;
+  }
+  .bitline{
+    font-size:11px;
+    letter-spacing:.15em;
+    color:var(--dim);
+    padding:0 12px 10px;
+    min-height:16px;
+  }
+  .bitline b{color:var(--amber);}
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:2px;
+  }
+  .playbtn{
+    width:36px; height:36px;
+    border-radius:50%;
+    border:1px solid var(--trace);
+    background:rgba(110,231,168,.08);
+    color:var(--trace);
+    font-size:13px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition:all .15s;
+  }
+  .playbtn:active{transform:scale(.94);}
+  input[type=range]{
+    flex:1;
+    accent-color:var(--trace);
+    height:4px;
+  }
+  .speedlabel{font-size:10.5px; color:var(--dim); width:56px; text-align:right;}
+
+  .legend{
+    display:flex;
+    gap:16px;
+    font-size:10px;
+    color:var(--dim);
+    flex-wrap:wrap;
+  }
+  .legend span{display:flex; align-items:center; gap:5px;}
+  .dot{width:7px; height:7px; border-radius:50%;}
+  .footnote{
+    font-size:11px;
+    color:var(--dim);
+    line-height:1.6;
+  }
+  .footnote b{color:var(--text);}
+
+  .modes{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+  }
+  .mode{
+    flex:1;
+    border:1px solid var(--line);
+    background:#0d1113;
+    color:var(--dim);
+    font-family:inherit;
+    font-size:12px;
+    padding:9px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:all .15s;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .mode.active{
+    border-color:var(--trace);
+    color:var(--trace);
+    background:rgba(110,231,168,.08);
+  }
+  .mode:not(.active):hover{color:var(--text);}
+  .bytecount{
+    font-size:10px;
+    color:var(--dim);
+    opacity:.8;
+  }
+  .mode.active .bytecount{color:var(--trace); opacity:1;}
+  .chartlegend{
+    display:flex;
+    gap:16px;
+    font-size:10px;
+    color:var(--dim);
+    margin-top:8px;
+    justify-content:center;
+  }
+  .chartlegend span{display:flex; align-items:center; gap:5px;}
+</style>
+</head>
+<body>
+
+<div>
+  <div class="eyebrow">Zigzag · Varint · UART · NRZ</div>
+  <h1>Avro on the Wire</h1>
+  <div class="sub">Same record, three ways onto the wire — schema-encoded Avro with no delimiters, versus JSON and XML text where punctuation and tags do the delimiting.</div>
+  <div class="modes" id="modeToggle">
+    <button class="mode active" data-mode="avro">Avro <span class="bytecount" id="cntAvro"></span></button>
+    <button class="mode" data-mode="json">JSON <span class="bytecount" id="cntJson"></span></button>
+    <button class="mode" data-mode="xml">XML <span class="bytecount" id="cntXml"></span></button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title"><span>Size & wire time compared</span><span>@ 115200 baud</span></div>
+  <canvas id="chart" style="width:100%; height:190px; display:block;"></canvas>
+  <div class="chartlegend">
+    <span><span class="dot" style="background:var(--trace)"></span>Avro</span>
+    <span><span class="dot" style="background:var(--amber)"></span>JSON</span>
+    <span><span class="dot" style="background:var(--blue)"></span>XML</span>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title"><span>Record</span><span>Event</span></div>
+  <div class="json-line" id="jsonView"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title"><span>Field</span><span id="fieldMeta">—</span></div>
+  <div class="fields" id="fieldChips"></div>
+  <div class="bytebox" id="byteBoxes"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title"><span>Wire signal (UART framing, NRZ, LSB first)</span><span id="scopeStatus">idle</span></div>
+  <div class="scope-wrap">
+    <canvas id="scope"></canvas>
+  </div>
+  <div class="bitline" id="bitLine">&nbsp;</div>
+  <div class="scope-labels"><span>+3.3V (1)</span><span>0V (0)</span></div>
+  <div class="controls">
+    <button class="playbtn" id="playBtn">▶</button>
+    <input type="range" id="scrub" min="0" max="1000" value="0">
+    <div class="speedlabel" id="speedLabel">1.0×</div>
+  </div>
+  <div class="legend" style="margin-top:10px;">
+    <span><span class="dot" style="background:var(--trace)"></span>data bit</span>
+    <span><span class="dot" style="background:var(--red)"></span>start bit</span>
+    <span><span class="dot" style="background:var(--amber)"></span>stop bit</span>
+  </div>
+</div>
+
+<div class="footnote">
+  Each byte is framed like classic async serial: a <b style="color:var(--red)">start bit (0)</b> pulls the idle-high line low, then <b>8 data bits, least-significant first</b>, then a <b style="color:var(--amber)">stop bit (1)</b> returns the line to idle. "Time on wire" assumes <b>115200 baud</b>, 10 bits/byte, and no compression — a rough real-world stand-in so the three formats can be compared on equal footing. Avro relies on the schema instead of delimiters; JSON and XML pay for self-description in extra bytes (and XML's closing tags cost more than JSON's punctuation).
+</div>
+
+<script>
+// ---------- Avro zigzag + varint encoding (BigInt-safe) ----------
+function zigzagEncode(n){
+  n = BigInt(n);
+  return (n << 1n) ^ (n >> 63n);
+}
+function varintBytes(u){
+  u = BigInt(u);
+  const bytes = [];
+  while (true){
+    let b = Number(u & 0x7Fn);
+    u >>= 7n;
+    if (u !== 0n){
+      bytes.push(b | 0x80);
+    } else {
+      bytes.push(b);
+      break;
+    }
+  }
+  return bytes;
+}
+function encodeLong(n){
+  return varintBytes(zigzagEncode(n));
+}
+
+const record = {
+  id: 5,
+  timestamp: 1721145600000,
+  userId: -42
+};
+const fieldNames = Object.keys(record);
+const compactJson = JSON.stringify(record); // e.g. {"id":5,"timestamp":1721145600000,"userId":-42}
+const BAUD = 115200; // bits/sec, typical serial rate — used for the "time on wire" estimate
+
+let mode = 'avro'; // 'avro' | 'json' | 'xml'
+let fields = [];
+let stream = [];
+
+// build per-byte bit frames: start(0) + 8 data bits LSB-first + stop(1)
+function byteToFrame(byte){
+  const bits = [0]; // start bit
+  for (let i=0;i<8;i++){
+    bits.push((byte >> i) & 1); // LSB first
+  }
+  bits.push(1); // stop bit
+  return bits;
+}
+
+function buildAvroFields(){
+  return fieldNames.map(name=>{
+    const value = record[name];
+    const zz = zigzagEncode(value);
+    const bytes = encodeLong(value);
+    return {name, value, zigzag: zz.toString(), bytes, segment: null};
+  });
+}
+
+function buildJsonFields(){
+  const positions = fieldNames.map(n => compactJson.indexOf('"'+n+'"'));
+  return fieldNames.map((name,i)=>{
+    const start = i===0 ? 0 : positions[i];
+    const end = i===fieldNames.length-1 ? compactJson.length : positions[i+1];
+    const segment = compactJson.slice(start,end);
+    const bytes = Array.from(segment).map(ch=>ch.charCodeAt(0));
+    return {name, value: record[name], segment, bytes};
+  });
+}
+
+function buildXmlFields(){
+  return fieldNames.map((name,i)=>{
+    let segment = `<${name}>${record[name]}</${name}>`;
+    if (i===0) segment = '<Event>'+segment;
+    if (i===fieldNames.length-1) segment = segment+'</Event>';
+    const bytes = Array.from(segment).map(ch=>ch.charCodeAt(0));
+    return {name, value: record[name], segment, bytes};
+  });
+}
+
+const xmlString = '<Event>'+fieldNames.map(n=>`<${n}>${record[n]}</${n}>`).join('')+'</Event>';
+
+function fieldsForMode(m){
+  if (m==='avro') return buildAvroFields();
+  if (m==='json') return buildJsonFields();
+  return buildXmlFields();
+}
+function totalBytes(m){ return fieldsForMode(m).reduce((s,f)=>s+f.bytes.length,0); }
+function timeMs(m){ return (totalBytes(m)*10/BAUD)*1000; } // 10 bits/byte: start+8 data+stop, no parity
+
+function buildStream(){
+  fields = fieldsForMode(mode);
+  stream = [];
+  fields.forEach((f, fi)=>{
+    f.bytes.forEach((byte, bi)=>{
+      const frame = byteToFrame(byte);
+      frame.forEach((bit, k)=>{
+        let label = 'data';
+        if (k===0) label='start';
+        else if (k===9) label='stop';
+        stream.push({bit, fieldIdx:fi, byteIdx:bi, label, byte});
+      });
+      stream.push({bit:1, fieldIdx:fi, byteIdx:bi, label:'idle', byte});
+      stream.push({bit:1, fieldIdx:fi, byteIdx:bi, label:'idle', byte});
+    });
+  });
+  document.getElementById('cntAvro').textContent = '· ' + totalBytes('avro') + 'B';
+  document.getElementById('cntJson').textContent = '· ' + totalBytes('json') + 'B';
+  document.getElementById('cntXml').textContent = '· ' + totalBytes('xml') + 'B';
+}
+
+// ---------- render record/text panel ----------
+const jsonView = document.getElementById('jsonView');
+function renderJSON(activeField){
+  if (mode==='avro'){
+    let html = '<span class="jkey">{</span>\n';
+    fields.forEach((f,i)=>{
+      const isActive = activeField===i;
+      html += `  <span class="jkey">"${f.name}"</span><span class="jkey">: </span><span class="jval ${isActive?'active':''}">${f.value}</span>${i<fields.length-1?',':''}\n`;
+    });
+    html += '<span class="jkey">}</span>';
+    jsonView.innerHTML = html;
+  } else {
+    let html = '';
+    fields.forEach((f,i)=>{
+      const isActive = activeField===i;
+      html += `<span class="jval ${isActive?'active':''}">${f.segment.replace(/</g,'&lt;')}</span>`;
+    });
+    jsonView.innerHTML = html;
+  }
+}
+
+// ---------- field chips ----------
+const fieldChips = document.getElementById('fieldChips');
+fields.forEach((f,i)=>{
+  const chip = document.createElement('button');
+  chip.className = 'fchip' + (i===0?' active':'');
+  chip.textContent = f.name;
+  chip.onclick = ()=> jumpToField(i);
+  fieldChips.appendChild(chip);
+});
+
+// ---------- byte boxes ----------
+const byteBoxes = document.getElementById('byteBoxes');
+function renderBytes(fieldIdx, activeByteIdx){
+  byteBoxes.innerHTML = '';
+  const f = fields[fieldIdx];
+  f.bytes.forEach((byte, bi)=>{
+    const div = document.createElement('div');
+    div.className = 'byte' + (bi===activeByteIdx?' active':(bi<activeByteIdx?' done':''));
+    const bin = byte.toString(2).padStart(8,'0');
+    div.innerHTML = `<div class="hex">0x${byte.toString(16).padStart(2,'0').toUpperCase()}</div><div class="bits">${bin}</div>`;
+    byteBoxes.appendChild(div);
+  });
+}
+
+document.getElementById('fieldMeta').textContent = '';
+
+// ---------- scope canvas ----------
+const canvas = document.getElementById('scope');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize', resizeCanvas);
+
+const BITS_VISIBLE = 24; // how many bit-slots shown across the scope width at once
+
+function drawScope(centerIndex){
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0,0,w,h);
+
+  const slotW = w / BITS_VISIBLE;
+  const highY = h*0.28, lowY = h*0.72;
+
+  const startIdx = Math.max(0, Math.floor(centerIndex - BITS_VISIBLE/2));
+
+  // grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<=BITS_VISIBLE;x++){
+    ctx.beginPath();
+    ctx.moveTo(x*slotW,0);
+    ctx.lineTo(x*slotW,h);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(0,highY); ctx.lineTo(w,highY); ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,lowY); ctx.lineTo(w,lowY); ctx.stroke();
+
+  // trace
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let prevY = null;
+  for(let i=0;i<BITS_VISIBLE+1;i++){
+    const idx = startIdx + i;
+    if (idx<0 || idx>=stream.length) continue;
+    const s = stream[idx];
+    const y = s.bit===1 ? highY : lowY;
+    const x0 = i*slotW, x1 = (i+1)*slotW;
+    if (prevY!==null && prevY!==y){
+      ctx.lineTo(x0,prevY);
+      ctx.lineTo(x0,y);
+    } else if (prevY===null){
+      ctx.moveTo(x0,y);
+    }
+    ctx.lineTo(x1,y);
+    prevY = y;
+  }
+  const grad = ctx.createLinearGradient(0,0,w,0);
+  grad.addColorStop(0,'rgba(110,231,168,0.15)');
+  grad.addColorStop(0.5,'rgba(110,231,168,1)');
+  grad.addColorStop(1,'rgba(110,231,168,0.15)');
+  ctx.strokeStyle = grad;
+  ctx.shadowColor = 'rgba(110,231,168,0.6)';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // color-coded bit markers (start=red, stop=amber)
+  for(let i=0;i<BITS_VISIBLE;i++){
+    const idx = startIdx + i;
+    if (idx<0 || idx>=stream.length) continue;
+    const s = stream[idx];
+    if (s.label==='start' || s.label==='stop'){
+      const y = s.bit===1?highY:lowY;
+      ctx.fillStyle = s.label==='start' ? '#e8735c' : '#f0a94e';
+      ctx.beginPath();
+      ctx.arc(i*slotW + slotW/2, y, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // playhead
+  const playX = (centerIndex - startIdx)*slotW + slotW/2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(playX, 0);
+  ctx.lineTo(playX, h);
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(playX, stream[centerIndex] && stream[centerIndex].bit===1?highY:lowY, 4.5, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// ---------- playback state ----------
+let pos = 0;
+let playing = false;
+let speed = 1.0;
+let lastTime = null;
+const BASE_STEP_PER_SEC = 6; // bit-slots per second at 1x
+
+const scrub = document.getElementById('scrub');
+const playBtn = document.getElementById('playBtn');
+const scopeStatus = document.getElementById('scopeStatus');
+const bitLine = document.getElementById('bitLine');
+const fieldMeta = document.getElementById('fieldMeta');
+
+function updateAll(){
+  const s = stream[Math.round(pos)];
+  if (!s) return;
+  renderJSON(s.fieldIdx);
+  renderBytes(s.fieldIdx, s.byteIdx);
+  drawScope(Math.round(pos));
+  scrub.value = Math.round(pos);
+
+  const f = fields[s.fieldIdx];
+  fieldMeta.textContent = mode==='avro'
+    ? `value ${f.value} → zigzag ${f.zigzag} → ${f.bytes.length} byte${f.bytes.length>1?'s':''}`
+    : `"${f.segment.replace(/</g,'&lt;')}" → ${f.bytes.length} byte${f.bytes.length>1?'s':''} (1 char = 1 byte)`;
+
+  document.querySelectorAll('.fchip').forEach((c,i)=> c.classList.toggle('active', i===s.fieldIdx));
+
+  const labelColor = s.label==='start' ? 'var(--red)' : (s.label==='stop' ? 'var(--amber)' : (s.label==='idle' ? 'var(--dim)' : 'var(--trace)'));
+  bitLine.innerHTML = `bit <b style="color:${labelColor}">${s.bit}</b> &nbsp;·&nbsp; <span style="color:${labelColor}">${s.label}</span> &nbsp;·&nbsp; byte 0x${s.byte.toString(16).padStart(2,'0').toUpperCase()}`;
+
+  scopeStatus.textContent = playing ? 'transmitting' : (pos>=stream.length-1 ? 'done' : 'paused');
+}
+
+function jumpToField(fi){
+  const idx = stream.findIndex(s=>s.fieldIdx===fi);
+  pos = idx;
+  updateAll();
+}
+
+function tick(t){
+  if (!playing) return;
+  if (lastTime===null) lastTime = t;
+  const dt = (t - lastTime)/1000;
+  lastTime = t;
+  pos += dt * BASE_STEP_PER_SEC * speed;
+  if (pos >= stream.length - 1){
+    pos = stream.length - 1;
+    playing = false;
+    playBtn.textContent = '▶';
+    updateAll();
+    return;
+  }
+  updateAll();
+  requestAnimationFrame(tick);
+}
+
+playBtn.onclick = ()=>{
+  playing = !playing;
+  playBtn.textContent = playing ? '❚❚' : '▶';
+  if (playing){
+    if (pos >= stream.length-1) pos = 0;
+    lastTime = null;
+    requestAnimationFrame(tick);
+  }
+  updateAll();
+};
+
+scrub.oninput = (e)=>{
+  playing = false;
+  playBtn.textContent = '▶';
+  pos = Number(e.target.value);
+  updateAll();
+};
+
+// speed cycle
+const speedLabel = document.getElementById('speedLabel');
+const speeds = [0.5, 1, 2, 4];
+let speedIdx = 1;
+speedLabel.style.cursor = 'pointer';
+speedLabel.onclick = ()=>{
+  speedIdx = (speedIdx+1) % speeds.length;
+  speed = speeds[speedIdx];
+  speedLabel.textContent = speed.toFixed(1)+'×';
+};
+
+// ---------- mode toggle ----------
+document.querySelectorAll('.mode').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const newMode = btn.dataset.mode;
+    if (newMode===mode) return;
+    mode = newMode;
+    document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+    playing = false;
+    playBtn.textContent = '▶';
+    pos = 0;
+    buildStream();
+    scrub.max = stream.length - 1;
+    updateAll();
+  });
+});
+
+// ---------- comparison bar chart (Avro vs JSON vs XML) ----------
+const chartCanvas = document.getElementById('chart');
+const chartCtx = chartCanvas.getContext('2d');
+function resizeChart(){
+  const rect = chartCanvas.getBoundingClientRect();
+  chartCanvas.width = rect.width * devicePixelRatio;
+  chartCanvas.height = rect.height * devicePixelRatio;
+  chartCtx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize', ()=>{ resizeChart(); drawComparisonChart(); });
+
+function drawComparisonChart(){
+  const rect = chartCanvas.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  chartCtx.clearRect(0,0,w,h);
+
+  const formats = [
+    {key:'avro', label:'Avro',  color:'#6ee7a8'},
+    {key:'json', label:'JSON',  color:'#f0a94e'},
+    {key:'xml',  label:'XML',   color:'#6ea8e7'}
+  ];
+  const stats = formats.map(f=>({...f, bytes: totalBytes(f.key), ms: timeMs(f.key)}));
+  const maxBytes = Math.max(...stats.map(s=>s.bytes));
+  const maxMs = Math.max(...stats.map(s=>s.ms));
+
+  const topPad = 22, bottomPad = 34, plotH = h - topPad - bottomPad;
+  const groupW = w / 2; // two metric groups: Size, Time
+  const barW = groupW / (formats.length + 1.6);
+
+  chartCtx.font = '600 11px "JetBrains Mono", monospace';
+  chartCtx.textAlign = 'center';
+
+  function drawGroup(groupIndex, values, unit, fmt, maxVal, title){
+    const groupX0 = groupIndex * groupW;
+    // group title
+    chartCtx.fillStyle = 'rgba(255,255,255,0.45)';
+    chartCtx.font = '600 10px "JetBrains Mono", monospace';
+    chartCtx.fillText(title, groupX0 + groupW/2, 12);
+
+    stats.forEach((s, i)=>{
+      const val = values[i];
+      const barH = maxVal>0 ? (val/maxVal) * plotH : 0;
+      const x = groupX0 + groupW/2 - (formats.length*barW)/2 + i*barW + barW*0.15;
+      const y = topPad + (plotH - barH);
+
+      // bar with glow
+      const grad = chartCtx.createLinearGradient(0,y,0,topPad+plotH);
+      grad.addColorStop(0, s.color);
+      grad.addColorStop(1, s.color + '33');
+      chartCtx.fillStyle = grad;
+      const bw = barW*0.7;
+      const radius = 4;
+      chartCtx.beginPath();
+      chartCtx.moveTo(x, y+radius);
+      chartCtx.arcTo(x, y, x+radius, y, radius);
+      chartCtx.lineTo(x+bw-radius, y);
+      chartCtx.arcTo(x+bw, y, x+bw, y+radius, radius);
+      chartCtx.lineTo(x+bw, topPad+plotH);
+      chartCtx.lineTo(x, topPad+plotH);
+      chartCtx.closePath();
+      chartCtx.fill();
+
+      // value label
+      chartCtx.fillStyle = s.color;
+      chartCtx.font = '700 11px "JetBrains Mono", monospace';
+      chartCtx.fillText(fmt(val), x+bw/2, y-6);
+
+      // format name below axis
+      chartCtx.fillStyle = 'rgba(255,255,255,0.4)';
+      chartCtx.font = '500 9.5px "JetBrains Mono", monospace';
+      chartCtx.fillText(s.label, x+bw/2, topPad+plotH+16);
+    });
+  }
+
+  // baseline
+  chartCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+  chartCtx.beginPath();
+  chartCtx.moveTo(0, topPad+plotH);
+  chartCtx.lineTo(w, topPad+plotH);
+  chartCtx.stroke();
+  // divider between the two groups
+  chartCtx.beginPath();
+  chartCtx.moveTo(groupW, topPad-6);
+  chartCtx.lineTo(groupW, topPad+plotH+6);
+  chartCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+  chartCtx.stroke();
+
+  drawGroup(0, stats.map(s=>s.bytes), 'B', v=> v+'B', maxBytes, 'SIZE (BYTES)');
+  drawGroup(1, stats.map(s=>s.ms), 'ms', v=> v<1 ? (v*1000).toFixed(0)+'µs' : v.toFixed(1)+'ms', maxMs, 'TIME ON WIRE');
+}
+
+// init
+buildStream();
+scrub.max = stream.length - 1;
+resizeCanvas();
+resizeChart();
+updateAll();
+drawComparisonChart();
+</script>
+</body>
+</html>
