@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Two Paths, One Topic — Avro/Apicurio vs Raw JSON on Kafka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0f1a;
+    --panel: #10182a;
+    --panel-2: #0d1422;
+    --line: #1e2b42;
+    --text: #dce6f5;
+    --muted: #6f84a3;
+    --safe: #2dd4bf;
+    --safe-dim: #123832;
+    --risk: #f5a524;
+    --risk-dim: #3a2c10;
+    --bad: #fb5555;
+    --bad-dim: #3a1414;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, #132038 0%, transparent 60%),
+      radial-gradient(ellipse 900px 500px at 85% 110%, #131f1c 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    min-height:100vh;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{margin-bottom:22px;}
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--safe);
+    display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe);}
+  h1{
+    font-size:clamp(24px,3.4vw,38px);
+    font-weight:700;
+    margin:8px 0 6px;
+    letter-spacing:-0.01em;
+  }
+  h1 span{color:var(--muted);font-weight:500;}
+  .sub{color:var(--muted);font-size:14.5px;max-width:760px;line-height:1.55;}
+
+  .controls{
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+    margin:20px 0 26px;
+    padding:14px 16px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  button.run{
+    background:var(--safe);
+    color:#00201b;
+    border:none;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    display:flex;align-items:center;gap:8px;
+    transition:transform .15s ease, box-shadow .15s ease;
+    box-shadow:0 0 0 rgba(45,212,191,0);
+  }
+  button.run:hover{transform:translateY(-1px); box-shadow:0 6px 20px rgba(45,212,191,.25);}
+  button.run:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none;}
+  button.reset{
+    background:transparent;
+    color:var(--muted);
+    border:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  button.reset:hover{color:var(--text);border-color:#33456b;}
+
+  .toggle-row{
+    display:flex;align-items:center;gap:10px;
+    margin-left:auto;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .switch{
+    width:40px;height:22px;border-radius:20px;
+    background:#1b2740;border:1px solid var(--line);
+    position:relative;cursor:pointer;flex-shrink:0;
+    transition:background .2s ease;
+  }
+  .switch.on{background:#3a2410;border-color:var(--risk);}
+  .switch .knob{
+    position:absolute;top:2px;left:2px;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--muted);
+    transition:transform .2s ease, background .2s ease;
+  }
+  .switch.on .knob{transform:translateX(18px);background:var(--risk);}
+  .toggle-label.on{color:var(--risk);}
+
+  .speed-row{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+  select{
+    background:var(--panel-2);color:var(--text);border:1px solid var(--line);
+    border-radius:6px;padding:5px 8px;font-family:'JetBrains Mono',monospace;font-size:12px;
+  }
+
+  .lane{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 20px 24px;
+    margin-bottom:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .lane.laneA{border-color:#173832;}
+  .lane.laneB{border-color:#3a2f14;}
+  .lane-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:18px;
+    flex-wrap:wrap;gap:8px;
+  }
+  .lane-title{
+    display:flex;align-items:center;gap:10px;
+    font-weight:700;font-size:15px;
+  }
+  .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;letter-spacing:.06em;
+    padding:3px 8px;border-radius:5px;
+    text-transform:uppercase;
+  }
+  .laneA .tag{background:var(--safe-dim);color:var(--safe);}
+  .laneB .tag{background:var(--risk-dim);color:var(--risk);}
+  .lane-desc{font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+  .track{
+    position:relative;
+    display:flex;
+    align-items:stretch;
+    gap:0;
+    padding-top:6px;
+  }
+  .node{
+    flex:1;
+    min-width:0;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 10px 11px;
+    text-align:center;
+    position:relative;
+    z-index:2;
+    transition:border-color .25s ease, background .25s ease, transform .25s ease, box-shadow .25s ease;
+  }
+  .node .icon{font-size:19px;margin-bottom:6px;display:block;}
+  .node .label{font-size:11.5px;font-weight:600;line-height:1.25;}
+  .node .detail{font-size:9.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:3px;line-height:1.3;min-height:22px;}
+  .node.active{transform:translateY(-3px);}
+  .laneA .node.active{border-color:var(--safe);background:#0f2420;box-shadow:0 0 22px rgba(45,212,191,.18);}
+  .laneB .node.active{border-color:var(--risk);background:#241c0c;box-shadow:0 0 22px rgba(245,165,36,.18);}
+  .node.done{opacity:.55;}
+  .node.blocked{border-color:var(--bad)!important;background:#241010!important;box-shadow:0 0 22px rgba(251,85,85,.25)!important;}
+  .node.failed{border-color:var(--bad)!important;background:#241010!important;box-shadow:0 0 22px rgba(251,85,85,.25)!important;animation:shake .4s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+  .connector{
+    flex:0 0 26px;
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    z-index:1;
+  }
+  .connector .line{
+    width:100%;height:2px;background:var(--line);
+    transition:background .25s ease;
+  }
+  .connector.lit .line{background:var(--muted);}
+  .laneA .connector.lit .line{background:var(--safe);}
+  .laneB .connector.lit .line{background:var(--risk);}
+  .connector .arrow{
+    position:absolute;right:-1px;font-size:11px;color:var(--line);
+  }
+
+  .packet{
+    position:absolute;
+    top:50%;
+    transform:translate(-50%,-50%);
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;
+    font-weight:700;
+    padding:5px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+    z-index:5;
+    opacity:0;
+    transition:left .55s cubic-bezier(.4,.1,.3,1), opacity .25s ease, top .55s ease;
+    pointer-events:none;
+  }
+  .laneA .packet{background:var(--safe);color:#00251f;box-shadow:0 0 14px rgba(45,212,191,.5);}
+  .laneB .packet{background:var(--risk);color:#2a1c04;box-shadow:0 0 14px rgba(245,165,36,.5);}
+  .packet.show{opacity:1;}
+  .packet.err{background:var(--bad)!important;color:#fff!important;box-shadow:0 0 14px rgba(251,85,85,.6)!important;}
+
+  .callout{
+    position:absolute;
+    left:50%;
+    top:100%;
+    transform:translate(-50%,8px);
+    background:#050a13;
+    border:1px solid var(--bad);
+    color:#ffd7d7;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:8px 11px;
+    border-radius:8px;
+    white-space:nowrap;
+    z-index:6;
+    opacity:0;
+    transition:opacity .25s ease, transform .25s ease;
+    pointer-events:none;
+  }
+  .callout.show{opacity:1;transform:translate(-50%,4px);}
+  .callout::before{
+    content:"";position:absolute;top:-5px;left:50%;transform:translateX(-50%);
+    border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--bad);
+  }
+
+  .caption{
+    margin-top:16px;
+    min-height:20px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    color:var(--muted);
+    border-top:1px dashed var(--line);
+    padding-top:12px;
+  }
+  .laneA .caption b{color:var(--safe);}
+  .laneB .caption b{color:var(--risk);}
+  .caption.bad b, .caption.bad{color:var(--bad)!important;}
+
+  .stats{
+    display:grid;
+    grid-template-columns:1.3fr repeat(2,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    margin-top:22px;
+    font-size:13px;
+  }
+  .stats > div{background:var(--panel-2);padding:12px 14px;}
+  .stats .hd{background:var(--panel);font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .stats .hd.a{color:var(--safe);}
+  .stats .hd.b{color:var(--risk);}
+  .stats .metric{color:var(--muted);font-size:12.5px;}
+  .val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;}
+  .val.good{color:var(--safe);}
+  .val.bad{color:var(--bad);}
+  .val.warn{color:var(--risk);}
+
+  footer{margin-top:26px;color:var(--muted);font-size:11.5px;font-family:'JetBrains Mono',monospace;line-height:1.7;}
+  footer b{color:var(--text);}
+
+  @media (max-width:820px){
+    .track{flex-wrap:wrap;gap:8px;}
+    .connector{display:none;}
+    .node{flex:1 1 30%;}
+    .packet{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">kafka · schema governance</div>
+    <h1>Two paths, one topic <span>— Avro + Apicurio vs. raw JSON</span></h1>
+    <p class="sub">A dummy end-to-end walkthrough of a producer publishing an event and a consumer reading it back —
+    once through Avro serialization validated against an Apicurio schema registry, and once as a plain
+    JSON string with no contract at all. Press play to watch a payload travel each pipeline stage by stage.</p>
+  </header>
+
+  <div class="controls">
+    <button class="run" id="playBtn" onclick="runAll()">▶ Publish event</button>
+    <button class="reset" onclick="resetAll()">↺ reset</button>
+    <div class="speed-row">
+      speed
+      <select id="speed">
+        <option value="900">slow</option>
+        <option value="550" selected>normal</option>
+        <option value="280">fast</option>
+      </select>
+    </div>
+    <div class="toggle-row">
+      <span id="toggleLabel" class="toggle-label">simulate breaking schema change</span>
+      <div class="switch" id="evolveSwitch" onclick="toggleEvolve()"><div class="knob"></div></div>
+    </div>
+  </div>
+
+  <!-- LANE A: Apicurio + Avro -->
+  <div class="lane laneA" id="laneA">
+    <div class="lane-head">
+      <div class="lane-title">🛡️ <span>With Apicurio + Avro</span> <span class="tag">governed</span></div>
+      <div class="lane-desc">binary · schema-validated · compatibility-checked</div>
+    </div>
+    <div class="track" id="trackA"></div>
+    <div class="caption" id="capA">Idle — press <b>Publish event</b> to start.</div>
+  </div>
+
+  <!-- LANE B: raw JSON -->
+  <div class="lane laneB" id="laneB">
+    <div class="lane-head">
+      <div class="lane-title">⚠️ <span>Without schema registry</span> <span class="tag">ungoverned</span></div>
+      <div class="lane-desc">plain-text JSON · no validation · no contract</div>
+    </div>
+    <div class="track" id="trackB"></div>
+    <div class="caption" id="capB">Idle — press <b>Publish event</b> to start.</div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <footer>
+    <b>Read it as:</b> Lane A registers/looks up the Avro schema in Apicurio, gets a compatibility check (BACKWARD by default), then ships a compact binary payload tagged with a schema ID. The consumer resolves that ID back to the exact schema before deserializing. Lane B just stringifies an object and ships it — nothing checks that the consumer's expectations still match what the producer sent.<br>
+    This is an illustrative simulation for teaching the concept, not a live Kafka cluster.
+  </footer>
+
+</div>
+
+<script>
+const stagesA = [
+  {icon:"📦", label:"Producer", detail:"builds Order event"},
+  {icon:"📐", label:".avsc Schema Check", detail:"validate object vs local .avsc"},
+  {icon:"🧬", label:"Avro Serializer", detail:"object → Avro binary"},
+  {icon:"🔍", label:"Artifact Lookup", detail:"does schema exist in registry?"},
+  {icon:"🆕", label:"Create Artifact", detail:"not found → register new version"},
+  {icon:"✅", label:"Compatibility Check", detail:"BACKWARD rule"},
+  {icon:"📡", label:"Kafka Topic", detail:"orders.v1 (binary+id)"},
+  {icon:"🔎", label:"Registry Lookup", detail:"consumer resolves schema id"},
+  {icon:"🧩", label:"Avro Deserializer", detail:"binary → object"},
+  {icon:"🖥️", label:"Consumer", detail:"typed, validated object"},
+];
+const stagesB = [
+  {icon:"📦", label:"Producer", detail:"builds Order event"},
+  {icon:"📝", label:"JSON.stringify()", detail:"object → text"},
+  {icon:"📡", label:"Kafka Topic", detail:"orders.raw (plain text)"},
+  {icon:"📖", label:"JSON.parse()", detail:"text → object"},
+  {icon:"🖥️", label:"Consumer", detail:"hopes shape matches"},
+];
+
+const captionsA = [
+  "Producer builds an <b>Order</b> event: orderId, sku, qty, price.",
+  "Client checks the object against the local <b>.avsc schema file</b> — field names and types must line up before anything is encoded.",
+  "Object passes validation, so it's encoded to compact <b>Avro binary</b> using that schema.",
+  "Serializer asks <b>Apicurio Registry</b> whether this exact schema/artifact is already registered.",
+  "<b>Not found</b> — registry creates a new artifact (or a new version of an existing one) to hold this schema.",
+  "Before accepting it, the registry runs a <b>compatibility check</b> (e.g. BACKWARD) against prior versions of this artifact.",
+  "Kafka stores the binary payload — just a <b>magic byte + schema ID + Avro bytes</b>, a few dozen bytes total.",
+  "Consumer's client reads the schema ID off the message and <b>checks with Apicurio Registry</b> to resolve the exact writer schema.",
+  "With the correct schema in hand, the client <b>decodes the Avro binary</b> back into a typed object.",
+  "Consumer receives a <b>strongly-typed, contract-validated</b> object. No guessing about field types.",
+];
+const captionsB = [
+  "Producer builds the same <b>Order</b> event.",
+  "Object is flattened with <b>JSON.stringify()</b> — human-readable, but verbose and untyped.",
+  "Kafka stores the raw text as-is. No registry, no ID, no compatibility rule — <b>whatever the producer sends, goes</b>.",
+  "Consumer blindly <b>JSON.parse()</b>s the bytes and hopes the field names and types haven't drifted.",
+  "Consumer gets a <b>plain object</b> — if a field was renamed or removed upstream, this fails at runtime, not before.",
+];
+
+const evolveErrorA = "Apicurio rejected registration: removing field 'qty' without a default breaks BACKWARD compatibility.";
+const evolveErrorB = "Runtime error in consumer: cannot read property 'qty' of undefined — schema drifted silently.";
+
+let evolveMode = false;
+let running = false;
+
+function buildTrack(trackId, stages, laneClass){
+  const track = document.getElementById(trackId);
+  track.innerHTML = "";
+  stages.forEach((s, i) => {
+    const node = document.createElement("div");
+    node.className = "node";
+    node.id = trackId+"-node-"+i;
+    node.innerHTML = `<span class="icon">${s.icon}</span><div class="label">${s.label}</div><div class="detail">${s.detail}</div>`;
+    track.appendChild(node);
+    if(i < stages.length-1){
+      const conn = document.createElement("div");
+      conn.className = "connector";
+      conn.id = trackId+"-conn-"+i;
+      conn.innerHTML = `<div class="line"></div><div class="arrow">▸</div>`;
+      track.appendChild(conn);
+    }
+  });
+  // packet + callout
+  const packet = document.createElement("div");
+  packet.className = "packet";
+  packet.id = trackId+"-packet";
+  packet.textContent = laneClass==="laneA" ? "⟨avro:bin⟩" : "{ json }";
+  track.appendChild(packet);
+
+  const callout = document.createElement("div");
+  callout.className = "callout";
+  callout.id = trackId+"-callout";
+  track.appendChild(callout);
+}
+buildTrack("trackA", stagesA, "laneA");
+buildTrack("trackB", stagesB, "laneB");
+
+function toggleEvolve(){
+  if(running) return;
+  evolveMode = !evolveMode;
+  document.getElementById("evolveSwitch").classList.toggle("on", evolveMode);
+  document.getElementById("toggleLabel").classList.toggle("on", evolveMode);
+}
+
+function nodeCenter(trackId, i){
+  const track = document.getElementById(trackId);
+  const node = document.getElementById(trackId+"-node-"+i);
+  const tr = track.getBoundingClientRect();
+  const nr = node.getBoundingClientRect();
+  return (nr.left - tr.left) + nr.width/2;
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function playLane(trackId, stages, captions, laneEl, capEl, opts){
+  const speed = parseInt(document.getElementById("speed").value, 10);
+  const packet = document.getElementById(trackId+"-packet");
+  const callout = document.getElementById(trackId+"-callout");
+  packet.classList.remove("show","err");
+  callout.classList.remove("show");
+  capEl.textContent = "";
+  capEl.classList.remove("bad");
+
+  // reset nodes/connectors
+  stages.forEach((_,i) => {
+    document.getElementById(trackId+"-node-"+i).className = "node";
+    const c = document.getElementById(trackId+"-conn-"+i);
+    if(c) c.classList.remove("lit");
+  });
+
+  await sleep(120);
+  const x0 = nodeCenter(trackId, 0);
+  packet.style.left = x0+"px";
+  packet.style.top = "50%";
+  packet.classList.add("show");
+
+  for(let i=0;i<stages.length;i++){
+    const node = document.getElementById(trackId+"-node-"+i);
+    node.classList.add("active");
+    const x = nodeCenter(trackId, i);
+    packet.style.left = x+"px";
+    capEl.innerHTML = captions[i];
+
+    const isBlockStage = opts.blockAt === i;
+    if(isBlockStage){
+      await sleep(speed*0.55);
+      node.classList.remove("active");
+      node.classList.add(opts.blockKind);
+      packet.classList.add("err");
+      callout.style.left = x+"px";
+      callout.textContent = opts.errorText;
+      callout.classList.add("show");
+      capEl.innerHTML = "<b>"+ (opts.blockKind==="blocked" ? "REJECTED — " : "FAILED — ") + "</b>" + opts.errorText;
+      capEl.classList.add("bad");
+      return { stoppedAt: i, error:true };
+    }
+
+    await sleep(speed*0.7);
+    node.classList.remove("active");
+    node.classList.add("done");
+    if(i < stages.length-1){
+      document.getElementById(trackId+"-conn-"+i).classList.add("lit");
+      await sleep(speed*0.3);
+    }
+  }
+  return { stoppedAt: stages.length-1, error:false };
+}
+
+async function runAll(){
+  if(running) return;
+  running = true;
+  document.getElementById("playBtn").disabled = true;
+
+  const laneA = document.getElementById("laneA");
+  const laneB = document.getElementById("laneB");
+  const capA = document.getElementById("capA");
+  const capB = document.getElementById("capB");
+
+  const optsA = evolveMode
+    ? {blockAt: 5, blockKind:"blocked", errorText: evolveErrorA}
+    : {blockAt: -1, blockKind:"blocked", errorText:""};
+  const optsB = evolveMode
+    ? {blockAt: 4, blockKind:"failed", errorText: evolveErrorB}
+    : {blockAt: -1, blockKind:"failed", errorText:""};
+
+  const [resA, resB] = await Promise.all([
+    playLane("trackA", stagesA, captionsA, laneA, capA, optsA),
+    playLane("trackB", stagesB, captionsB, laneB, capB, optsB),
+  ]);
+
+  renderStats(resA, resB);
+  running = false;
+  document.getElementById("playBtn").disabled = false;
+}
+
+function resetAll(){
+  if(running) return;
+  buildTrack("trackA", stagesA, "laneA");
+  buildTrack("trackB", stagesB, "laneB");
+  document.getElementById("capA").innerHTML = "Idle — press <b>Publish event</b> to start.";
+  document.getElementById("capB").innerHTML = "Idle — press <b>Publish event</b> to start.";
+  document.getElementById("capA").classList.remove("bad");
+  document.getElementById("capB").classList.remove("bad");
+  document.getElementById("stats").innerHTML = "";
+}
+
+function renderStats(resA, resB){
+  const stats = document.getElementById("stats");
+  const rows = evolveMode ? [
+    ["Outcome",
+      `<span class="val bad">Blocked before publish ✕</span>`,
+      `<span class="val bad">Shipped, broke consumer ✕</span>`],
+    ["When the problem surfaces",
+      `<span class="val good">At registration — before any bytes hit Kafka</span>`,
+      `<span class="val bad">In production — after consumers read it</span>`],
+    ["Root cause visibility",
+      `<span class="val good">Exact incompatible field reported</span>`,
+      `<span class="val bad">Generic runtime exception, no schema diff</span>`],
+  ] : [
+    ["Wire payload size (approx.)", `<span class="val good">~38 bytes</span>`, `<span class="val warn">~112 bytes</span>`],
+    ["Type safety", `<span class="val good">Strong (schema-enforced)</span>`, `<span class="val bad">None (duck-typed)</span>`],
+    ["Schema evolution rule", `<span class="val good">Enforced (e.g. BACKWARD)</span>`, `<span class="val bad">Not enforced</span>`],
+    ["Consumer failure mode", `<span class="val good">Caught at registration time</span>`, `<span class="val bad">Silent drift → runtime crash</span>`],
+  ];
+
+  stats.innerHTML = `
+    <div class="hd">metric</div><div class="hd a">apicurio + avro</div><div class="hd b">raw json</div>
+    ${rows.map(r => `<div class="metric">${r[0]}</div><div>${r[1]}</div><div>${r[2]}</div>`).join("")}
+  `;
+}
+
+window.addEventListener("resize", () => {
+  // reposition packets if visible mid-flight (simple: hide on resize)
+  document.querySelectorAll(".packet.show").forEach(p => p.classList.remove("show"));
+});
+</script>
+</body>
+</html>
