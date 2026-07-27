@@ -238,78 +238,6 @@
     justify-content:center;
   }
   .chartlegend span{display:flex; align-items:center; gap:5px;}
-
-  .cost-controls{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:12px;
-  }
-  .cost-field{
-    font-size:10px;
-    color:var(--dim);
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-  }
-  .cost-field input[type=number], .cost-field select{
-    background:#0d1113;
-    border:1px solid var(--line);
-    color:var(--text);
-    border-radius:6px;
-    padding:6px 8px;
-    font-family:inherit;
-    font-size:12px;
-    width:110px;
-  }
-  .cost-check{
-    font-size:10px;
-    color:var(--dim);
-    display:flex;
-    align-items:center;
-    gap:6px;
-    margin-top:auto;
-    padding-bottom:6px;
-  }
-  .cost-check input{accent-color:var(--trace);}
-  table.costtbl{
-    width:100%;
-    border-collapse:collapse;
-    font-size:11.5px;
-  }
-  table.costtbl th{
-    text-align:left;
-    color:var(--dim);
-    font-weight:500;
-    font-size:10px;
-    text-transform:uppercase;
-    letter-spacing:.05em;
-    padding:5px 6px;
-    border-bottom:1px solid var(--line);
-  }
-  table.costtbl td{
-    padding:6px 6px;
-    border-bottom:1px solid var(--line);
-  }
-  table.costtbl tr:last-child td{border-bottom:none;}
-  .rowdot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px;}
-  .savings-strip{
-    margin-top:10px;
-    padding:10px 12px;
-    border:1px solid var(--trace-dim);
-    border-radius:8px;
-    background:rgba(110,231,168,.06);
-    font-size:12px;
-    color:var(--trace);
-    line-height:1.5;
-  }
-  .savings-strip b{color:#fff;}
-  .cost-note{
-    font-size:10px;
-    color:var(--dim);
-    margin-top:8px;
-    line-height:1.5;
-  }
 </style>
 </head>
 <body>
@@ -363,29 +291,6 @@
     <span><span class="dot" style="background:var(--red)"></span>start bit</span>
     <span><span class="dot" style="background:var(--amber)"></span>stop bit</span>
   </div>
-</div>
-
-<div class="panel">
-  <div class="panel-title"><span>Cloud cost & throughput @ scale</span><span id="scaleLabel">—</span></div>
-  <div class="cost-controls">
-    <label class="cost-field">Events / day
-      <input type="number" id="eventsPerDay" value="1000000000" min="1" step="1000000">
-    </label>
-    <label class="cost-field">$ / GB (transfer+storage)
-      <input type="number" id="costPerGB" value="0.10" min="0" step="0.01">
-    </label>
-    <label class="cost-field">Link speed
-      <select id="linkSpeed">
-        <option value="0.1">100 Mbps</option>
-        <option value="1" selected>1 Gbps</option>
-        <option value="10">10 Gbps</option>
-      </select>
-    </label>
-    <label class="cost-check"><input type="checkbox" id="includeFraming" checked> +5B registry framing (Avro)</label>
-  </div>
-  <div id="costTable"></div>
-  <div class="savings-strip" id="savingsStrip"></div>
-  <div class="cost-note">Bytes/event come directly from the encodings above (zigzag+varint for Avro, compact text for JSON/XML). $/GB and link speed are editable placeholders — swap in your actual egress, broker, and storage rates for a precise number.</div>
 </div>
 
 <div class="footnote">
@@ -834,89 +739,6 @@ function drawComparisonChart(){
   drawGroup(1, stats.map(s=>s.ms), 'ms', v=> v<1 ? (v*1000).toFixed(0)+'µs' : v.toFixed(1)+'ms', maxMs, 'TIME ON WIRE');
 }
 
-// ---------- cloud cost & throughput panel ----------
-const FORMATS_COST = [
-  {key:'avro', label:'Avro', color:'#6ee7a8', framingBytes:5},
-  {key:'json', label:'JSON', color:'#f0a94e', framingBytes:0},
-  {key:'xml',  label:'XML',  color:'#6ea8e7', framingBytes:0}
-];
-
-function fmtBytes(n){
-  if (n >= 1e12) return (n/1e12).toFixed(2)+' TB';
-  if (n >= 1e9)  return (n/1e9).toFixed(2)+' GB';
-  if (n >= 1e6)  return (n/1e6).toFixed(2)+' MB';
-  if (n >= 1e3)  return (n/1e3).toFixed(2)+' KB';
-  return n.toFixed(0)+' B';
-}
-function fmtMoney(n){
-  if (n >= 1e6) return '$'+(n/1e6).toFixed(2)+'M';
-  if (n >= 1e3) return '$'+(n/1e3).toFixed(2)+'k';
-  return '$'+n.toFixed(2);
-}
-function fmtRate(n){
-  if (n >= 1e6) return (n/1e6).toFixed(2)+'M/s';
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'k/s';
-  return n.toFixed(0)+'/s';
-}
-
-const eventsInput = document.getElementById('eventsPerDay');
-const costInput = document.getElementById('costPerGB');
-const linkSelect = document.getElementById('linkSpeed');
-const framingCheck = document.getElementById('includeFraming');
-const scaleLabel = document.getElementById('scaleLabel');
-const costTableEl = document.getElementById('costTable');
-const savingsStrip = document.getElementById('savingsStrip');
-
-function renderCostPanel(){
-  const eventsPerDay = Math.max(1, Number(eventsInput.value) || 0);
-  const costPerGB = Math.max(0, Number(costInput.value) || 0);
-  const linkGbps = Number(linkSelect.value);
-  const includeFraming = framingCheck.checked;
-  const linkBytesPerSec = (linkGbps * 1e9) / 8;
-
-  scaleLabel.textContent = fmtRate(eventsPerDay/86400).replace('/s','/s avg') + ' · ' + (eventsPerDay/1e9).toFixed(2) + 'B/day';
-
-  const rows = FORMATS_COST.map(f=>{
-    const baseBytes = totalBytes(f.key);
-    const bytesPerEvent = baseBytes + (f.key==='avro' && includeFraming ? f.framingBytes : 0);
-    const bytesPerDay = bytesPerEvent * eventsPerDay;
-    const bytesPerMonth = bytesPerDay * 30;
-    const gbPerMonth = bytesPerMonth / 1e9;
-    const costPerMonth = gbPerMonth * costPerGB;
-    const throughput = linkBytesPerSec / bytesPerEvent; // msgs/sec at this link speed
-    return {...f, bytesPerEvent, bytesPerDay, bytesPerMonth, gbPerMonth, costPerMonth, throughput};
-  });
-
-  let html = '<table class="costtbl"><thead><tr>' +
-    '<th>Format</th><th>Bytes/evt</th><th>Data/mo</th><th>Cost/mo</th><th>Throughput</th>' +
-    '</tr></thead><tbody>';
-  rows.forEach(r=>{
-    html += `<tr>
-      <td><span class="rowdot" style="background:${r.color}"></span>${r.label}</td>
-      <td>${r.bytesPerEvent} B</td>
-      <td>${fmtBytes(r.bytesPerMonth)}</td>
-      <td>${fmtMoney(r.costPerMonth)}</td>
-      <td>${fmtRate(r.throughput)}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  costTableEl.innerHTML = html;
-
-  const avro = rows.find(r=>r.key==='avro');
-  const json = rows.find(r=>r.key==='json');
-  const savedPerMonth = json.costPerMonth - avro.costPerMonth;
-  const pctSaved = json.costPerMonth > 0 ? (savedPerMonth / json.costPerMonth) * 100 : 0;
-  const throughputMult = json.throughput > 0 ? avro.throughput / json.throughput : 0;
-
-  savingsStrip.innerHTML = `Avro vs JSON at this scale: <b>${fmtMoney(savedPerMonth)}/mo saved</b> ` +
-    `(<b>${pctSaved.toFixed(0)}%</b> less data + cost) and <b>${throughputMult.toFixed(1)}×</b> more events/sec on the same link.`;
-}
-
-[eventsInput, costInput, linkSelect, framingCheck].forEach(el=>{
-  el.addEventListener('input', renderCostPanel);
-  el.addEventListener('change', renderCostPanel);
-});
-
 // init
 buildStream();
 scrub.max = stream.length - 1;
@@ -924,7 +746,6 @@ resizeCanvas();
 resizeChart();
 updateAll();
 drawComparisonChart();
-renderCostPanel();
 </script>
 </body>
 </html>
