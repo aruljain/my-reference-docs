@@ -310,6 +310,29 @@
     margin-top:8px;
     line-height:1.5;
   }
+  .framing-callout{
+    margin-top:10px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-left:2px solid var(--amber);
+    border-radius:6px;
+    background:rgba(240,169,78,.05);
+    font-size:11px;
+    color:var(--text);
+    line-height:1.6;
+  }
+  .framing-callout b{color:var(--amber);}
+  .framing-callout .diff-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    font-size:10.5px;
+    color:var(--dim);
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--line);
+  }
+  .framing-callout .diff-row b{color:var(--text);}
 </style>
 </head>
 <body>
@@ -383,6 +406,7 @@
     </label>
     <label class="cost-check"><input type="checkbox" id="includeFraming" checked> +5B registry framing (Avro)</label>
   </div>
+  <div class="framing-callout" id="framingCallout"></div>
   <div id="costTable"></div>
   <div class="savings-strip" id="savingsStrip"></div>
   <div class="cost-note">Bytes/event come directly from the encodings above (zigzag+varint for Avro, compact text for JSON/XML). $/GB and link speed are editable placeholders — swap in your actual egress, broker, and storage rates for a precise number.</div>
@@ -867,7 +891,27 @@ const scaleLabel = document.getElementById('scaleLabel');
 const costTableEl = document.getElementById('costTable');
 const savingsStrip = document.getElementById('savingsStrip');
 
+const framingCalloutEl = document.getElementById('framingCallout');
+function renderFramingCallout(){
+  const includeFraming = framingCheck.checked;
+  const avroPayload = totalBytes('avro'); // pure zigzag+varint fields, same number the chart above shows
+  const avroWire = avroPayload + (includeFraming ? 5 : 0);
+  if (!includeFraming){
+    framingCalloutEl.innerHTML =
+      `Checkbox is <b>off</b> — the table below shows the same <b>${avroPayload}B</b> for Avro as the chart above. ` +
+      `JSON/XML never get anything added here since they have no registry lookup to model.`;
+    return;
+  }
+  framingCalloutEl.innerHTML =
+    `Why Avro shows <b>${avroWire}B</b> here but <b>${avroPayload}B</b> in the chart above: the chart only encodes the ` +
+    `record fields (zigzag + varint). This table adds a <b>5-byte Confluent Schema Registry header</b> — 1 magic byte ` +
+    `+ a 4-byte schema ID — that real Avro/Kafka producers prepend so consumers know which schema to decode with. ` +
+    `JSON and XML get <b>+0B</b> because they're self-describing and have no equivalent registry step.` +
+    `<div class="diff-row"><span>${avroPayload}B fields <b>+</b> 5B registry header</span><b>= ${avroWire}B on the wire</b></div>`;
+}
+
 function renderCostPanel(){
+  renderFramingCallout();
   const eventsPerDay = Math.max(1, Number(eventsInput.value) || 0);
   const costPerGB = Math.max(0, Number(costInput.value) || 0);
   const linkGbps = Number(linkSelect.value);
