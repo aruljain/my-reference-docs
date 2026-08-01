@@ -285,6 +285,132 @@
   .code .k{ color:var(--teal); }
   .code .v{ color:var(--amber); }
 
+  .extra-panel{
+    display:none;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--panel-border-soft);
+  }
+  .extra-panel.show{ display:block; }
+  .bp-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.6px;
+    color:var(--text-dim);
+    margin-bottom:9px;
+  }
+  .bp-title b{ color:var(--text); }
+
+  .byte-strip{
+    display:flex;
+    height:36px;
+    border-radius:6px;
+    overflow:hidden;
+    border:1px solid var(--panel-border);
+  }
+  .byte-seg{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;
+    font-weight:700;
+    color:#04140f;
+    white-space:nowrap;
+    overflow:hidden;
+    transition:filter 0.2s;
+  }
+  .seg-magic{ background:#9fb2cf; min-width:30px; }
+  .seg-id{ background:var(--amber); flex:4 1 auto; }
+  .seg-body{ background:var(--teal); flex:45 1 auto; }
+
+  .bp-legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-top:9px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--text-dim);
+  }
+  .bp-legend span{ display:flex; align-items:center; gap:6px; }
+  .bp-legend .dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+  .bp-fields{
+    margin-top:11px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+  }
+  .bp-fields > div{
+    display:grid;
+    grid-template-columns: 96px 1fr 48px;
+    gap:10px;
+    padding:3px 0;
+    border-top:1px dashed var(--panel-border-soft);
+    color:var(--text-dim);
+  }
+  .bp-fields > div span:first-child{ color:var(--text); }
+  .bp-fields > div span:last-child{ text-align:right; color:var(--teal); }
+  .bp-fields .bp-total{ border-top:1px solid var(--panel-border); margin-top:2px; color:var(--text); font-weight:700; }
+  .bp-fields .bp-total span:last-child{ color:var(--amber); }
+
+  .bp-pipeline{
+    margin-top:11px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--text-dim);
+    background:#080f1e;
+    border:1px solid var(--panel-border-soft);
+    border-radius:6px;
+    padding:8px 12px;
+  }
+  .bp-pipeline b{ color:var(--teal); }
+
+  .cmp-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 0;
+  }
+  .cmp-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-dim);
+    width:280px;
+    flex-shrink:0;
+  }
+  .cmp-bar-track{
+    flex:1;
+    height:16px;
+    background:#080f1e;
+    border:1px solid var(--panel-border-soft);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .cmp-bar{ height:100%; transition:width 0.6s ease; }
+  .cmp-bar.teal{ background:var(--teal); }
+  .cmp-bar.amber{ background:var(--amber); }
+  .cmp-bar.red{ background:var(--red); }
+  .cmp-val{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    width:88px;
+    text-align:right;
+    color:var(--text);
+    flex-shrink:0;
+  }
+
+  .kbytes{
+    display:inline-block;
+    margin-top:3px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    color:var(--amber);
+    opacity:0;
+    transition:opacity 0.3s;
+  }
+  .kbytes.show{ opacity:1; }
+
   @media (max-width:640px){
     .node{ min-width:88px; padding:6px 8px; }
     .node .label{ font-size:9.5px; }
@@ -362,6 +488,7 @@
       <div class="kind">topic</div>
       <div class="label">orders</div>
       <div class="sub">magic byte · global ID · avro bytes</div>
+      <div class="kbytes" id="kafka-bytes"></div>
     </div>
     <div class="node" id="n-consumer" style="left:91%; top:72%;">
       <div class="kind">quarkus app</div>
@@ -375,10 +502,52 @@
   <div class="panel">
     <div class="panel-top">
       <div>
-        <div class="step-tag" id="step-tag">Step 1 / 9</div>
+        <div class="step-tag" id="step-tag">Step 1 / 11</div>
         <div class="step-title" id="step-title"></div>
         <div class="step-desc" id="step-desc"></div>
         <div class="code" id="code"></div>
+
+        <div class="extra-panel bytepanel" id="bytepanel">
+          <div class="bp-title" id="bp-title"></div>
+          <div class="byte-strip">
+            <div class="byte-seg seg-magic">0x00</div>
+            <div class="byte-seg seg-id">1002</div>
+            <div class="byte-seg seg-body">Avro body</div>
+          </div>
+          <div class="bp-legend">
+            <span><i class="dot" style="background:#9fb2cf;"></i>magic byte · 1 B (single-object encoding marker)</span>
+            <span><i class="dot" style="background:var(--amber);"></i>global schema ID · 4 B, int32 BE → 1002</span>
+            <span><i class="dot" style="background:var(--teal);"></i>Avro binary body · 45 B</span>
+          </div>
+          <div class="bp-fields">
+            <div><span>orderId</span><span>string, len-prefixed varint</span><span>12 B</span></div>
+            <div><span>customerId</span><span>string, len-prefixed varint</span><span>11 B</span></div>
+            <div><span>amount</span><span>double, fixed-width</span><span>8 B</span></div>
+            <div><span>currency</span><span>string, len-prefixed varint</span><span>4 B</span></div>
+            <div><span>promoCode</span><span>union[null,string] → "SUMMER25"</span><span>10 B</span></div>
+            <div class="bp-total"><span>total on the wire</span><span>1 + 4 + 45</span><span>50 B</span></div>
+          </div>
+          <div class="bp-pipeline" id="bp-pipeline"></div>
+        </div>
+
+        <div class="extra-panel comparepanel" id="comparepanel">
+          <div class="bp-title">Same <b>OrderEvent</b> instance, three ways to put it on the wire</div>
+          <div class="cmp-row">
+            <span class="cmp-label">Apicurio wire format (magic+id+avro)</span>
+            <div class="cmp-bar-track"><div class="cmp-bar teal" style="width:12%"></div></div>
+            <span class="cmp-val">50 B</span>
+          </div>
+          <div class="cmp-row">
+            <span class="cmp-label">Plain JSON (field names, no schema)</span>
+            <div class="cmp-bar-track"><div class="cmp-bar amber" style="width:26%"></div></div>
+            <span class="cmp-val">107 B · 2.1×</span>
+          </div>
+          <div class="cmp-row">
+            <span class="cmp-label">JSON + full schema embedded per message</span>
+            <div class="cmp-bar-track"><div class="cmp-bar red" style="width:100%"></div></div>
+            <span class="cmp-val">414 B · 8.3×</span>
+          </div>
+        </div>
       </div>
       <div class="controls">
         <button id="btn-prev">← prev</button>
@@ -418,53 +587,74 @@ const consCfg = `<span class="k">mp.messaging.incoming.orders.value.deserializer
 <span class="k">apicurio.registry.url</span>=https://schema-registry.internal/apis/registry/v3
 <span class="k">apicurio.registry.use-id</span>=global-id   # resolved lazily, cached after first hit`;
 
+const N = 11;
 const steps = [
   {
-    tag:'Step 1 / 9', title:'At rest',
+    tag:`Step 1 / ${N}`, title:'At rest',
     desc:'v1 of the OrderEvent schema is ENABLED and serving both apps. Neither Quarkus app carries an .avsc file in its own source tree — the contract lives only in the central schema repo and the registry.',
     active:[], hops:[], ledger:{v1:'enabled', v2:'none'}
   },
   {
-    tag:'Step 2 / 9', title:'Maker proposes a change',
+    tag:`Step 2 / ${N}`, title:'Maker proposes a change',
     desc:'A developer (the "maker") edits order-event.avsc in the central schema-registry-defs repo — not in order-service or inventory-service — adding an optional promoCode field, and opens a pull request.',
     active:['maker','repo'], hops:[['maker','repo','gov']], ledger:{v1:'enabled', v2:'none'}
   },
   {
-    tag:'Step 3 / 9', title:'Pipeline validates',
+    tag:`Step 3 / ${N}`, title:'Pipeline validates',
     desc:"CI/CD lints the new .avsc and dry-runs a BACKWARD compatibility check against the registry's current live version, before anything is registered.",
     active:['repo','ci'], hops:[['repo','ci','gov']], ledger:{v1:'enabled', v2:'none'}
   },
   {
-    tag:'Step 4 / 9', title:'Registered as a candidate',
+    tag:`Step 4 / ${N}`, title:'Registered as a candidate',
     desc:'The pipeline pushes the new version into Apicurio Registry as artifact "orders-value" v2 — landing in DRAFT state. v1 stays ENABLED and keeps serving live traffic untouched.',
     active:['ci','registry'], hops:[['ci','registry','gov']], ledger:{v1:'enabled', v2:'draft'}
   },
   {
-    tag:'Step 5 / 9', title:'Sent for review',
+    tag:`Step 5 / ${N}`, title:'Sent for review',
     desc:'A required reviewer — the "checker", enforced to be a different person than the maker via registry roles and branch protection — is notified to inspect the diff and the compatibility report.',
     active:['registry','checker'], hops:[['registry','checker','gov']], ledger:{v1:'enabled', v2:'draft'}
   },
   {
-    tag:'Step 6 / 9', title:'Checker approves',
-    desc:'The checker approves the change. Registry flips v2 from DRAFT → ENABLED and assigns it a global ID. (Had they rejected it, v2 would stay DRAFT or be deleted — it would never reach a running app.)',
+    tag:`Step 6 / ${N}`, title:'Checker approves',
+    desc:'The checker approves the change. Registry flips v2 from DRAFT → ENABLED and assigns it global ID 1002. (Had they rejected it, v2 would stay DRAFT or be deleted — it would never reach a running app.)',
     active:['checker','registry'], hops:[['checker','registry','approve']], ledger:{v1:'superseded', v2:'enabled'}
   },
   {
-    tag:'Step 7 / 9', title:'Producer resolves & serializes',
-    desc:'order-service was configured only with a registry URL and an artifact ID — never the schema itself. At produce time its Avro serializer resolves the latest ENABLED schema (cached after the first lookup) and writes [magic byte | global ID | Avro bytes] to Kafka.',
-    active:['registry','producer','kafka'], hops:[['registry','producer','gov'],['producer','kafka']],
+    tag:`Step 7 / ${N}`, title:'Producer resolves the schema',
+    desc:'order-service was configured only with a registry URL and an artifact ID — never the schema itself. At produce time its serializer asks the SchemaResolver for the latest ENABLED version; on the first call that\'s a registry round trip, after that it\'s served from an in-memory cache keyed by artifact ID.',
+    active:['registry','producer'], hops:[['registry','producer','gov']],
     ledger:{v1:'superseded', v2:'enabled'}, code: prodCfg
   },
   {
-    tag:'Step 8 / 9', title:'Consumer resolves & deserializes',
-    desc:'inventory-service reads the global ID from the message. On a cache miss it fetches that exact schema version from the registry once, then deserializes into the OrderEvent POJO — every later message with that ID skips the round trip entirely.',
-    active:['kafka','consumer','registry'], hops:[['kafka','consumer'],['consumer','registry','gov']],
-    ledger:{v1:'superseded', v2:'enabled'}, code: consCfg
+    tag:`Step 8 / ${N}`, title:'Producer serializes & publishes',
+    desc:'SpecificDatumWriter encodes the OrderEvent against the resolved schema into raw Avro binary — no field names, no delimiters, just values. AvroKafkaSerializer then prefixes 5 header bytes (magic byte + global ID) and hands the result to Kafka.',
+    active:['producer','kafka'], hops:[['producer','kafka']],
+    ledger:{v1:'superseded', v2:'enabled'}, kafkaBytes:'50 B on the wire',
+    bytePanel:{ mode:'encode',
+      title:'<b>Encoding</b> — POJO → Avro binary → prefixed message',
+      pipeline:'OrderEvent (POJO)  →  <b>SpecificDatumWriter</b>.write(record, BinaryEncoder)  →  45 B avro body  →  <b>AvroKafkaSerializer</b> prepends [0x00][int32 BE 1002]  →  50 B on the wire'
+    }
   },
   {
-    tag:'Step 9 / 9', title:'Net effect',
-    desc:'Both Quarkus apps stay schema-agnostic in source control — they know a registry URL and an artifact ID, nothing more. Every contract change is proposed, validated, reviewed by someone other than its author, and approved — before it can ever touch a topic.',
-    active:['registry'], hops:[], ledger:{v1:'superseded', v2:'enabled'}
+    tag:`Step 9 / ${N}`, title:'Consumer deserializes',
+    desc:'inventory-service reads the first 5 bytes: magic byte, then the global ID. On a cache miss it fetches that exact schema version from the registry once — every later message carrying ID 1002 skips the round trip entirely and decodes straight from cache.',
+    active:['kafka','consumer','registry'], hops:[['kafka','consumer'],['consumer','registry','gov']],
+    ledger:{v1:'superseded', v2:'enabled'}, code: consCfg, kafkaBytes:'50 B on the wire',
+    bytePanel:{ mode:'decode',
+      title:'<b>Decoding</b> — prefixed message → Avro binary → POJO',
+      pipeline:'50 B on the wire  →  read [0x00][int32 BE 1002]  →  <b>SchemaResolver</b> (cache hit, or one registry GET) → schema for ID 1002  →  <b>SpecificDatumReader</b>.read(BinaryDecoder)  →  OrderEvent (POJO)'
+    }
+  },
+  {
+    tag:`Step 10 / ${N}`, title:'Why the wire format pays off',
+    desc:'Stripping field names and shipping only a 4-byte schema pointer instead of the schema itself is most of the saving. The same OrderEvent instance, encoded three ways:',
+    active:['registry','kafka'], hops:[],
+    ledger:{v1:'superseded', v2:'enabled'}, kafkaBytes:'50 B on the wire', comparePanel:true
+  },
+  {
+    tag:`Step 11 / ${N}`, title:'Net effect',
+    desc:'Both Quarkus apps stay schema-agnostic in source control — they know a registry URL and an artifact ID, nothing more. Every contract change is proposed, validated, reviewed by someone other than its author, and approved — before it can ever touch a topic, in a payload a fifth the size of hand-rolled JSON.',
+    active:['registry'], hops:[], ledger:{v1:'superseded', v2:'enabled'}, kafkaBytes:'50 B on the wire'
   },
 ];
 
@@ -517,17 +707,37 @@ async function renderStep(i, animate=true){
   if(step.code){ codeEl.innerHTML = step.code; codeEl.classList.add('show'); }
   else { codeEl.classList.remove('show'); codeEl.innerHTML=''; }
 
+  const bpEl = document.getElementById('bytepanel');
+  if(step.bytePanel){
+    document.getElementById('bp-title').innerHTML = step.bytePanel.title;
+    document.getElementById('bp-pipeline').innerHTML = step.bytePanel.pipeline;
+    bpEl.classList.add('show');
+  } else {
+    bpEl.classList.remove('show');
+  }
+
+  const cmpEl = document.getElementById('comparepanel');
+  cmpEl.classList.toggle('show', !!step.comparePanel);
+
+  const kb = document.getElementById('kafka-bytes');
+  if(step.kafkaBytes){ kb.textContent = step.kafkaBytes; kb.classList.add('show'); }
+  else { kb.classList.remove('show'); kb.textContent=''; }
+
   setLedger(step.ledger);
   clearActive();
   step.active.forEach(id => {
     const kind = step.hops.find(h=>h.includes(id))?.[2] || (step.hops[0]?.[2]) || '';
-    nodes[id].classList.add('active', kind || '');
+    nodes[id].classList.add('active');
+    if(kind) nodes[id].classList.add(kind);
   });
   step.hops.forEach(h=>{
     const [f,t,kind] = h;
     const sel1 = `#c-${f}-${t}`, sel2 = `#c-${t}-${f}`;
     let line = document.querySelector(sel1) || document.querySelector(sel2);
-    if(line) line.classList.add('active', kind || '');
+    if(line){
+      line.classList.add('active');
+      if(kind) line.classList.add(kind);
+    }
   });
 
   updateDots();
