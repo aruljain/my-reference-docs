@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Apicurio Registry · Maker-Checker · Avro Serde</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1120;
+    --bg2:#0d1730;
+    --grid: rgba(140,170,220,0.06);
+    --panel:#121d33;
+    --panel-border:#28405f;
+    --panel-border-soft:#1b2c48;
+    --text:#e7edf7;
+    --text-dim:#8fa3c2;
+    --teal:#57d9c4;
+    --amber:#f0b94d;
+    --green:#7bd88f;
+    --red:#e2707a;
+    --line-idle: rgba(140,170,220,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 40px;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(87,217,196,0.05), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(240,185,77,0.05), transparent 45%),
+      var(--bg);
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:2.5px;
+    color:var(--teal);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(18px,2.6vw,26px);
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:-0.2px;
+  }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:13.5px;
+    margin-bottom:22px;
+    text-align:center;
+    max-width:720px;
+    line-height:1.5;
+  }
+  .wrap{
+    width:100%;
+    max-width:1180px;
+  }
+  .stage-frame{
+    position:relative;
+    width:100%;
+    aspect-ratio: 1180 / 640;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/40px 40px,
+      var(--bg2);
+    border:1px solid var(--panel-border-soft);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .lane-label{
+    position:absolute;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1.8px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    opacity:0.75;
+  }
+  svg.connectors{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+  }
+  .conn{
+    stroke:var(--line-idle);
+    stroke-width:1.6;
+    fill:none;
+    transition:stroke 0.3s, stroke-width 0.3s, opacity 0.3s;
+  }
+  .conn.dashed{ stroke-dasharray:5 5; }
+  .conn.active{
+    stroke:var(--teal);
+    stroke-width:2.4;
+  }
+  .conn.active.gov{ stroke:var(--amber); }
+  .conn.active.approve{ stroke:var(--green); }
+
+  .node{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    padding:9px 12px;
+    min-width:118px;
+    text-align:center;
+    transition:border-color 0.35s, box-shadow 0.35s, transform 0.25s;
+    z-index:2;
+  }
+  .node .kind{
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    letter-spacing:1.3px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-bottom:2px;
+  }
+  .node .label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    font-weight:700;
+    line-height:1.25;
+  }
+  .node .sub{
+    font-size:9.5px;
+    color:var(--text-dim);
+    margin-top:2px;
+    line-height:1.3;
+  }
+  .node.active{
+    border-color:var(--teal);
+    box-shadow:0 0 0 1px rgba(87,217,196,0.25), 0 0 18px rgba(87,217,196,0.28);
+    transform:translate(-50%,-50%) scale(1.045);
+  }
+  .node.active.gov{
+    border-color:var(--amber);
+    box-shadow:0 0 0 1px rgba(240,185,77,0.25), 0 0 18px rgba(240,185,77,0.28);
+  }
+  .node.active.approve{
+    border-color:var(--green);
+    box-shadow:0 0 0 1px rgba(123,216,143,0.28), 0 0 18px rgba(123,216,143,0.28);
+  }
+  .node.registry{
+    min-width:190px;
+    padding:12px 16px;
+  }
+  .ledger{
+    margin-top:7px;
+    text-align:left;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;
+  }
+  .ledger-row{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    padding:2px 0;
+    border-top:1px dashed var(--panel-border-soft);
+  }
+  .badge{
+    font-size:8.5px;
+    padding:1px 6px;
+    border-radius:20px;
+    font-weight:700;
+    letter-spacing:0.4px;
+  }
+  .badge.enabled{ background:rgba(123,216,143,0.16); color:var(--green); }
+  .badge.draft{ background:rgba(240,185,77,0.16); color:var(--amber); }
+  .badge.superseded{ background:rgba(140,170,220,0.14); color:var(--text-dim); }
+  .badge.none{ background:transparent; color:var(--panel-border); }
+
+  .packet{
+    position:absolute;
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 10px 3px rgba(87,217,196,0.7);
+    transform:translate(-50%,-50%);
+    opacity:0;
+    transition:left 0.85s cubic-bezier(.4,0,.2,1), top 0.85s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+    z-index:5;
+  }
+  .packet.gov{ background:var(--amber); box-shadow:0 0 10px 3px rgba(240,185,77,0.7); }
+  .packet.approve{ background:var(--green); box-shadow:0 0 10px 3px rgba(123,216,143,0.7); }
+  .packet.show{ opacity:1; }
+
+  /* control + narration panel */
+  .panel{
+    margin-top:18px;
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--panel-border-soft);
+    border-radius:10px;
+    padding:16px 20px;
+  }
+  .panel-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .step-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--teal);
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    margin-bottom:4px;
+  }
+  .step-title{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:15px;
+    margin-bottom:6px;
+  }
+  .step-desc{
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.55;
+    max-width:640px;
+  }
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+  }
+  .controls button{
+    font-family:'JetBrains Mono',monospace;
+    background:var(--bg2);
+    border:1px solid var(--panel-border);
+    color:var(--text);
+    border-radius:6px;
+    padding:8px 12px;
+    font-size:12px;
+    cursor:pointer;
+    transition:border-color 0.2s, color 0.2s;
+  }
+  .controls button:hover{ border-color:var(--teal); color:var(--teal); }
+  .controls button.primary{ background:var(--teal); color:#062420; border-color:var(--teal); font-weight:700; }
+  .controls button.primary:hover{ color:#062420; }
+
+  .dots{
+    display:flex;
+    gap:6px;
+    margin-top:14px;
+  }
+  .dot{
+    height:5px;
+    flex:1;
+    background:var(--panel-border-soft);
+    border-radius:3px;
+    cursor:pointer;
+    transition:background 0.2s;
+  }
+  .dot.done{ background:var(--teal); }
+  .dot.current{ background:var(--amber); }
+
+  .code{
+    margin-top:12px;
+    background:#080f1e;
+    border:1px solid var(--panel-border-soft);
+    border-radius:8px;
+    padding:10px 14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.8px;
+    line-height:1.65;
+    color:#a9c9d6;
+    overflow-x:auto;
+    white-space:pre;
+    display:none;
+  }
+  .code.show{ display:block; }
+  .code .k{ color:var(--teal); }
+  .code .v{ color:var(--amber); }
+
+  @media (max-width:640px){
+    .node{ min-width:88px; padding:6px 8px; }
+    .node .label{ font-size:9.5px; }
+    .node .sub{ display:none; }
+    .node.registry .sub{ display:block; }
+    .step-desc{ font-size:12.3px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="eyebrow">Event-driven governance</div>
+<h1>Two Quarkus Apps · One Registry · A Human Gate Between Them</h1>
+<p class="subtitle">How <b>order-service</b> and <b>inventory-service</b> exchange Avro events without ever owning the schema themselves — every contract change is proposed, reviewed by a different person, and approved before it can reach a topic.</p>
+
+<div class="wrap">
+  <div class="stage-frame" id="stage">
+    <div class="lane-label" style="left:14px; top:10px;">Governance lane — schema lifecycle</div>
+    <div class="lane-label" style="left:14px; top:69%;">Runtime lane — Kafka + Avro serde</div>
+
+    <svg class="connectors" id="svg" viewBox="0 0 1180 640" preserveAspectRatio="none">
+      <!-- governance path -->
+      <path id="c-maker-repo" class="conn gov" d="M100,68 L215,68"/>
+      <path id="c-repo-ci"    class="conn gov" d="M300,68 L430,68"/>
+      <path id="c-ci-registry"     class="conn gov" d="M500,90 L560,190"/>
+      <path id="c-registry-checker" class="conn gov" d="M760,150 L940,90"/>
+      <path id="c-checker-registry" class="conn approve" d="M960,110 L740,190"/>
+      <!-- registry to runtime -->
+      <path id="c-registry-producer" class="conn dashed" d="M540,300 L165,430"/>
+      <path id="c-registry-consumer" class="conn dashed" d="M660,300 L1010,430"/>
+      <!-- data path -->
+      <path id="c-producer-kafka" class="conn" d="M245,460 L520,460"/>
+      <path id="c-kafka-consumer" class="conn" d="M690,460 L935,460"/>
+    </svg>
+
+    <!-- governance nodes -->
+    <div class="node" id="n-maker" style="left:6%; top:11%;">
+      <div class="kind">person</div>
+      <div class="label">Maker</div>
+      <div class="sub">proposes schema change</div>
+    </div>
+    <div class="node" id="n-repo" style="left:22%; top:11%;">
+      <div class="kind">git repo</div>
+      <div class="label">schema-registry-defs</div>
+      <div class="sub">order-event.avsc · lives outside both apps</div>
+    </div>
+    <div class="node" id="n-ci" style="left:40%; top:14%;">
+      <div class="kind">pipeline</div>
+      <div class="label">CI/CD</div>
+      <div class="sub">lint + compatibility check</div>
+    </div>
+    <div class="node" id="n-checker" style="left:82%; top:11%;">
+      <div class="kind">person</div>
+      <div class="label">Checker</div>
+      <div class="sub">reviews diff · ≠ maker</div>
+    </div>
+
+    <!-- registry hub -->
+    <div class="node registry" id="n-registry" style="left:52%; top:41%;">
+      <div class="kind">apicurio registry</div>
+      <div class="label">orders-value</div>
+      <div class="ledger">
+        <div class="ledger-row"><span>v1 · promoCode:false</span><span class="badge" id="badge-v1">ENABLED</span></div>
+        <div class="ledger-row"><span>v2 · promoCode:true</span><span class="badge none" id="badge-v2">—</span></div>
+      </div>
+    </div>
+
+    <!-- runtime nodes -->
+    <div class="node" id="n-producer" style="left:11%; top:72%;">
+      <div class="kind">quarkus app</div>
+      <div class="label">order-service</div>
+      <div class="sub">Avro serializer · no .avsc bundled</div>
+    </div>
+    <div class="node" id="n-kafka" style="left:52%; top:72%;">
+      <div class="kind">topic</div>
+      <div class="label">orders</div>
+      <div class="sub">magic byte · global ID · avro bytes</div>
+    </div>
+    <div class="node" id="n-consumer" style="left:91%; top:72%;">
+      <div class="kind">quarkus app</div>
+      <div class="label">inventory-service</div>
+      <div class="sub">Avro deserializer · resolves by ID</div>
+    </div>
+
+    <div class="packet" id="packet"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-top">
+      <div>
+        <div class="step-tag" id="step-tag">Step 1 / 9</div>
+        <div class="step-title" id="step-title"></div>
+        <div class="step-desc" id="step-desc"></div>
+        <div class="code" id="code"></div>
+      </div>
+      <div class="controls">
+        <button id="btn-prev">← prev</button>
+        <button id="btn-play" class="primary">⏸ pause</button>
+        <button id="btn-next">next →</button>
+        <button id="btn-restart">restart</button>
+      </div>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+const packet = document.getElementById('packet');
+const svg = document.getElementById('svg');
+
+const nodes = {
+  maker: document.getElementById('n-maker'),
+  repo: document.getElementById('n-repo'),
+  ci: document.getElementById('n-ci'),
+  checker: document.getElementById('n-checker'),
+  registry: document.getElementById('n-registry'),
+  producer: document.getElementById('n-producer'),
+  kafka: document.getElementById('n-kafka'),
+  consumer: document.getElementById('n-consumer'),
+};
+const conns = Array.from(document.querySelectorAll('.conn'));
+
+const prodCfg = `<span class="k">mp.messaging.outgoing.orders</span>.connector=smallrye-kafka
+<span class="k">mp.messaging.outgoing.orders.value.serializer</span>=io.apicurio.registry.serde.avro.AvroKafkaSerializer
+<span class="k">apicurio.registry.url</span>=https://schema-registry.internal/apis/registry/v3
+<span class="k">apicurio.registry.artifact-id</span>=orders-value
+<span class="k">apicurio.registry.auto-register</span>=<span class="v">false</span>   # apps may never self-register a schema`;
+
+const consCfg = `<span class="k">mp.messaging.incoming.orders.value.deserializer</span>=io.apicurio.registry.serde.avro.AvroKafkaDeserializer
+<span class="k">apicurio.registry.url</span>=https://schema-registry.internal/apis/registry/v3
+<span class="k">apicurio.registry.use-id</span>=global-id   # resolved lazily, cached after first hit`;
+
+const steps = [
+  {
+    tag:'Step 1 / 9', title:'At rest',
+    desc:'v1 of the OrderEvent schema is ENABLED and serving both apps. Neither Quarkus app carries an .avsc file in its own source tree — the contract lives only in the central schema repo and the registry.',
+    active:[], hops:[], ledger:{v1:'enabled', v2:'none'}
+  },
+  {
+    tag:'Step 2 / 9', title:'Maker proposes a change',
+    desc:'A developer (the "maker") edits order-event.avsc in the central schema-registry-defs repo — not in order-service or inventory-service — adding an optional promoCode field, and opens a pull request.',
+    active:['maker','repo'], hops:[['maker','repo','gov']], ledger:{v1:'enabled', v2:'none'}
+  },
+  {
+    tag:'Step 3 / 9', title:'Pipeline validates',
+    desc:"CI/CD lints the new .avsc and dry-runs a BACKWARD compatibility check against the registry's current live version, before anything is registered.",
+    active:['repo','ci'], hops:[['repo','ci','gov']], ledger:{v1:'enabled', v2:'none'}
+  },
+  {
+    tag:'Step 4 / 9', title:'Registered as a candidate',
+    desc:'The pipeline pushes the new version into Apicurio Registry as artifact "orders-value" v2 — landing in DRAFT state. v1 stays ENABLED and keeps serving live traffic untouched.',
+    active:['ci','registry'], hops:[['ci','registry','gov']], ledger:{v1:'enabled', v2:'draft'}
+  },
+  {
+    tag:'Step 5 / 9', title:'Sent for review',
+    desc:'A required reviewer — the "checker", enforced to be a different person than the maker via registry roles and branch protection — is notified to inspect the diff and the compatibility report.',
+    active:['registry','checker'], hops:[['registry','checker','gov']], ledger:{v1:'enabled', v2:'draft'}
+  },
+  {
+    tag:'Step 6 / 9', title:'Checker approves',
+    desc:'The checker approves the change. Registry flips v2 from DRAFT → ENABLED and assigns it a global ID. (Had they rejected it, v2 would stay DRAFT or be deleted — it would never reach a running app.)',
+    active:['checker','registry'], hops:[['checker','registry','approve']], ledger:{v1:'superseded', v2:'enabled'}
+  },
+  {
+    tag:'Step 7 / 9', title:'Producer resolves & serializes',
+    desc:'order-service was configured only with a registry URL and an artifact ID — never the schema itself. At produce time its Avro serializer resolves the latest ENABLED schema (cached after the first lookup) and writes [magic byte | global ID | Avro bytes] to Kafka.',
+    active:['registry','producer','kafka'], hops:[['registry','producer','gov'],['producer','kafka']],
+    ledger:{v1:'superseded', v2:'enabled'}, code: prodCfg
+  },
+  {
+    tag:'Step 8 / 9', title:'Consumer resolves & deserializes',
+    desc:'inventory-service reads the global ID from the message. On a cache miss it fetches that exact schema version from the registry once, then deserializes into the OrderEvent POJO — every later message with that ID skips the round trip entirely.',
+    active:['kafka','consumer','registry'], hops:[['kafka','consumer'],['consumer','registry','gov']],
+    ledger:{v1:'superseded', v2:'enabled'}, code: consCfg
+  },
+  {
+    tag:'Step 9 / 9', title:'Net effect',
+    desc:'Both Quarkus apps stay schema-agnostic in source control — they know a registry URL and an artifact ID, nothing more. Every contract change is proposed, validated, reviewed by someone other than its author, and approved — before it can ever touch a topic.',
+    active:['registry'], hops:[], ledger:{v1:'superseded', v2:'enabled'}
+  },
+];
+
+let current = 0;
+let playing = true;
+let timer = null;
+
+function center(el){
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x: r.left - s.left + r.width/2, y: r.top - s.top + r.height/2 };
+}
+
+function setLedger(state){
+  const b1 = document.getElementById('badge-v1');
+  const b2 = document.getElementById('badge-v2');
+  const map = {enabled:['ENABLED','enabled'], draft:['DRAFT','draft'], superseded:['SUPERSEDED','superseded'], none:['—','none']};
+  const [t1,c1] = map[state.v1]; b1.textContent=t1; b1.className='badge '+c1;
+  const [t2,c2] = map[state.v2]; b2.textContent=t2; b2.className='badge '+c2;
+}
+
+function clearActive(){
+  Object.values(nodes).forEach(n=>n.classList.remove('active','gov','approve'));
+  conns.forEach(c=>c.classList.remove('active','gov','approve'));
+}
+
+async function moveHop(hop){
+  const [fromId,toId,kind] = hop;
+  const from = center(nodes[fromId]);
+  const to = center(nodes[toId]);
+  packet.className = 'packet' + (kind ? ' '+kind : '');
+  packet.style.left = from.x+'px';
+  packet.style.top = from.y+'px';
+  packet.classList.remove('show');
+  void packet.offsetWidth;
+  packet.classList.add('show');
+  await new Promise(r=>requestAnimationFrame(r));
+  packet.style.left = to.x+'px';
+  packet.style.top = to.y+'px';
+  await new Promise(r=>setTimeout(r, 900));
+  packet.classList.remove('show');
+}
+
+async function renderStep(i, animate=true){
+  const step = steps[i];
+  document.getElementById('step-tag').textContent = step.tag;
+  document.getElementById('step-title').textContent = step.title;
+  document.getElementById('step-desc').textContent = step.desc;
+  const codeEl = document.getElementById('code');
+  if(step.code){ codeEl.innerHTML = step.code; codeEl.classList.add('show'); }
+  else { codeEl.classList.remove('show'); codeEl.innerHTML=''; }
+
+  setLedger(step.ledger);
+  clearActive();
+  step.active.forEach(id => {
+    const kind = step.hops.find(h=>h.includes(id))?.[2] || (step.hops[0]?.[2]) || '';
+    nodes[id].classList.add('active', kind || '');
+  });
+  step.hops.forEach(h=>{
+    const [f,t,kind] = h;
+    const sel1 = `#c-${f}-${t}`, sel2 = `#c-${t}-${f}`;
+    let line = document.querySelector(sel1) || document.querySelector(sel2);
+    if(line) line.classList.add('active', kind || '');
+  });
+
+  updateDots();
+
+  if(animate){
+    for(const hop of step.hops){
+      await moveHop(hop);
+    }
+  }
+}
+
+function updateDots(){
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  steps.forEach((s,i)=>{
+    const d = document.createElement('div');
+    d.className = 'dot' + (i<current ? ' done' : i===current ? ' current' : '');
+    d.addEventListener('click', ()=>{ goTo(i); });
+    dotsEl.appendChild(d);
+  });
+}
+
+function goTo(i, animate=true){
+  current = ((i % steps.length) + steps.length) % steps.length;
+  renderStep(current, animate);
+}
+
+function scheduleAutoplay(){
+  clearTimeout(timer);
+  if(!playing) return;
+  timer = setTimeout(()=>{
+    goTo(current+1);
+    scheduleAutoplay();
+  }, 4600);
+}
+
+document.getElementById('btn-next').addEventListener('click', ()=>{ goTo(current+1); scheduleAutoplay(); });
+document.getElementById('btn-prev').addEventListener('click', ()=>{ goTo(current-1); scheduleAutoplay(); });
+document.getElementById('btn-restart').addEventListener('click', ()=>{ goTo(0); scheduleAutoplay(); });
+document.getElementById('btn-play').addEventListener('click', (e)=>{
+  playing = !playing;
+  e.target.textContent = playing ? '⏸ pause' : '▶ play';
+  if(playing) scheduleAutoplay(); else clearTimeout(timer);
+});
+
+window.addEventListener('resize', ()=>renderStep(current, false));
+
+renderStep(0, false);
+scheduleAutoplay();
+</script>
+
+</body>
+</html>
